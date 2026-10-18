@@ -19,7 +19,13 @@ public static class ItemFactory
     // mantendo o mesmo visual; senão, monta um triângulo amarelo por código.
     public static GameObject CriarItem(Vector2 posicao, GameObject modelo)
     {
-        if (modelo != null) return Object.Instantiate(modelo, posicao, Quaternion.identity);
+        if (modelo != null)
+        {
+            GameObject copia = Object.Instantiate(modelo, posicao, Quaternion.identity);
+            copia.name = "Item";
+            copia.SetActive(true); // o modelo guardado pelo GameManager fica desativado
+            return copia;
+        }
 
         GameObject go = new GameObject("Item", typeof(SpriteRenderer));
         go.transform.position = posicao;

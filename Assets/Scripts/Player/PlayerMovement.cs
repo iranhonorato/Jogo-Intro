@@ -77,6 +77,8 @@ public class PlayerMovement : MonoBehaviour, IDanificavel
     {
         transform.position = new Vector3(posicao.x, posicao.y, transform.position.z);
         rb.position = posicao;
+        rb.linearVelocity = Vector2.zero; // não "carrega" o movimento da fase anterior
+        empurrao = Vector2.zero;
     }
 
     // Lê WASD ou setas. Normalizado para a diagonal não ser mais rápida que as retas.

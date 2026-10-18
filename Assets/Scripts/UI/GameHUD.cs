@@ -1,11 +1,12 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-// Interface do jogo (HUD), montada por código: cronômetro, itens, corações, tempo restante e tela final.
+// Interface do jogo (HUD), montada por código: cronômetro, fase e itens, corações, tempo restante,
+// mensagens (porta aberta, nova fase) e tela final.
 //
 // Padrão Observer: o HUD apenas observa o GameManager e a Vida do jogador. Ele lê o estado
 // a cada frame (valores que mudam sempre, como o cronômetro) e escuta eventos para o que
-// acontece de vez em quando (bônus/penalidade, vida alterada e fim de partida).
+// acontece de vez em quando (bônus/penalidade, vida alterada, porta aberta, nova fase e fim de partida).
 // Nunca altera as regras do jogo.
 public class GameHUD : MonoBehaviour
 {
@@ -16,6 +17,7 @@ public class GameHUD : MonoBehaviour
     private const float TamanhoCoracao = 52f;
     private const float EspacoCoracao = 60f;
     private const float DuracaoDestaque = 0.7f;
+    private const float DuracaoMensagem = 3f;
 
     private GameManager jogo;
     private Vida vida;
@@ -24,12 +26,14 @@ public class GameHUD : MonoBehaviour
     private Text textoCronometro;
     private Text textoItens;
     private Text textoRestante;
+    private Text textoMensagem;
     private Text textoFinal;
     private GameObject painelFinal;
 
     // Último bônus/penalidade, exibido por alguns instantes ao lado do tempo restante
     private float ultimaVariacao;
     private float destaqueAte;
+    private float mensagemAte;
 
     void Start()
     {
@@ -39,6 +43,8 @@ public class GameHUD : MonoBehaviour
 
         jogo.PartidaIniciada += Mostrar;
         jogo.TempoAlterado += AoAlterarTempo;
+        jogo.ItensConcluidos += AoConcluirItens;
+        jogo.FaseIniciada += AoIniciarFase;
         jogo.PartidaTerminou += AoTerminarPartida;
 
         if (vida != null)
@@ -57,6 +63,8 @@ public class GameHUD : MonoBehaviour
         if (jogo == null) return;
         jogo.PartidaIniciada -= Mostrar;
         jogo.TempoAlterado -= AoAlterarTempo;
+        jogo.ItensConcluidos -= AoConcluirItens;
+        jogo.FaseIniciada -= AoIniciarFase;
         jogo.PartidaTerminou -= AoTerminarPartida;
         if (vida != null) vida.VidaAlterada -= AtualizarCoracoes;
     }
@@ -66,7 +74,8 @@ public class GameHUD : MonoBehaviour
         if (!canvas.activeSelf) return;
 
         textoCronometro.text = $"Tempo: {Formatar(jogo.TempoDecorrido)}";
-        textoItens.text = $"Itens: {jogo.ItensColetados}/{jogo.ItensTotal}";
+        textoItens.text = $"Fase {jogo.FaseAtual}/{jogo.TotalFases}    Itens: {jogo.ItensColetados}/{jogo.ItensTotal}";
+        textoMensagem.enabled = Time.unscaledTime < mensagemAte && jogo.JogoAtivo;
         AtualizarTempoRestante();
     }
 
@@ -111,6 +120,23 @@ public class GameHUD : MonoBehaviour
         destaqueAte = Time.unscaledTime + DuracaoDestaque;
     }
 
+    private void AoConcluirItens()
+    {
+        MostrarMensagem("A porta abriu! Encontre a saída.");
+    }
+
+    private void AoIniciarFase(int fase)
+    {
+        MostrarMensagem(fase == jogo.TotalFases ? $"Fase {fase}: a última!" : $"Fase {fase}");
+    }
+
+    // Mensagem temporária no topo da tela
+    private void MostrarMensagem(string mensagem)
+    {
+        textoMensagem.text = mensagem;
+        mensagemAte = Time.unscaledTime + DuracaoMensagem;
+    }
+
     private void AoTerminarPartida(ResultadoPartida r)
     {
         string texto;
@@ -130,6 +156,7 @@ public class GameHUD : MonoBehaviour
             string titulo = r.Motivo == MotivoFim.SemVidas ? "SEM VIDAS!" : "TEMPO ESGOTADO!";
             texto = $"<color=#FF6060>{titulo}</color>\n\n" +
                     $"Tempo final: {Formatar(r.TempoFinal)}\n" +
+                    $"Fase: {r.Fase}/{r.TotalFases}\n" +
                     $"Itens coletados: {r.ItensColetados}/{r.ItensTotal}\n";
         }
 
@@ -156,6 +183,10 @@ public class GameHUD : MonoBehaviour
         textoItens = UIFactory.CriarTexto(raiz, "Itens", new Vector2(0.5f, 1f), new Vector2(0, -20), TextAnchor.UpperCenter, 48);
         textoRestante = UIFactory.CriarTexto(raiz, "TempoRestante", new Vector2(1f, 1f), new Vector2(-30, -90), TextAnchor.UpperRight, 48);
         CriarCoracoes(raiz);
+
+        textoMensagem = UIFactory.CriarTexto(raiz, "Mensagem", new Vector2(0.5f, 1f), new Vector2(0, -95), TextAnchor.UpperCenter, 44);
+        textoMensagem.color = new Color(1f, 0.9f, 0.3f);
+        textoMensagem.enabled = false;
 
         // Painel escuro que cobre a tela inteira no fim da partida
         painelFinal = UIFactory.CriarPainel(raiz, "PainelFinal", new Color(0f, 0f, 0f, 0.75f));

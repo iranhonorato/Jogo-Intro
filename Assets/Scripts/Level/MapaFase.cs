@@ -1,17 +1,21 @@
 using UnityEngine;
 
-// Desenho da fase em texto: cada caractere é uma célula de 0,5 x 0,5 unidade.
+// Desenho das fases em texto: cada caractere é uma célula de 0,5 x 0,5 unidade.
 // A primeira linha do texto é a parte de CIMA do mapa.
 //
 // Legenda:
 //   #  parede                 .  chão
 //   P  início do jogador      I  item (triângulo amarelo)
-//   C  coração (vida)         E  inimigo parado
-//   H  patrulha horizontal    V  patrulha vertical
-//   S  sentinela              F  perseguidor
+//   C  coração (vida)         D  porta de saída
+//   E  inimigo parado         H  patrulha horizontal
+//   V  patrulha vertical      S  sentinela
+//   F  perseguidor
 //
+// A porta abre quando todos os itens da fase são coletados e leva à próxima fase.
+// A porta da última fase é a saída do jogo (vitória).
 // Patrulhas e sentinelas vão de uma parede até a outra no corredor em que estão.
-// Para mudar a fase basta redesenhar o texto (todas as linhas com o mesmo tamanho).
+// Para criar uma fase nova, desenhe outro mapa e adicione-o em Fases (todas as linhas
+// com o mesmo tamanho).
 public static class MapaFase
 {
     public const float TamanhoCelula = 0.5f;
@@ -24,7 +28,8 @@ public static class MapaFase
     public const float TamanhoJogador = 0.45f;
     public const float TamanhoItem = 0.35f;
 
-    public static readonly string[] Layout =
+    // Fase 1: salas regulares, corredor central longo e a porta no canto inferior direito
+    private static readonly string[] Fase1 =
     {
         ".........#........#.........",
         ".P.......#........#....I....",
@@ -37,10 +42,35 @@ public static class MapaFase
         "......#...H..........#......",
         "...####..####..####..#..#...",
         ".........#..#.....#..I..#...",
-        "..I......#..#.....#.....#...",
+        "..I......#..#.....#.....#..F",
         "####..####..#..####..####...",
         "......#........#............",
-        "..C...#....I...#....S.....F.",
-        "......#........#............",
+        "..C...#....I...#....S.......",
+        "......#........#...........D",
     };
+
+    // Fase 2: arena central aberta com uma sentinela, mais inimigos, e a porta de saída
+    // no canto superior direito, num beco guardado por uma patrulha vertical
+    private static readonly string[] Fase2 =
+    {
+        "...............#...C..#....D",
+        ".I.............#.F....#.....",
+        "..###########..####...#..###",
+        "..#......#........#......#..",
+        "..#..I...#........#....V.#.I",
+        "..#......#..S.....#......#..",
+        "######E..#........#####..#..",
+        "..#...................#.....",
+        "..#...H...............#.....",
+        "..#..#####........#...####..",
+        ".....#.C.#...I....#.........",
+        ".....#...#........#.....I...",
+        ".....#...#........#.........",
+        "..####...####E.####...####..",
+        ".P.............#..S......#..",
+        "...............#....I....#.C",
+    };
+
+    // Ordem em que as fases são jogadas
+    public static readonly string[][] Fases = { Fase1, Fase2 };
 }

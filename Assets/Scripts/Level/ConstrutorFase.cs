@@ -14,6 +14,11 @@ public class ConstrutorFase
 
     private Labirinto labirinto;
     private Transform pastaFase; // objeto pai que agrupa a fase na Hierarchy
+    private GameObject modeloItem;
+
+    // Resultado da construção, usado pelo GameManager
+    public Transform Raiz => pastaFase;   // destruída ao trocar de fase
+    public Porta Porta { get; private set; } // null se o mapa não tiver porta
 
     public ConstrutorFase(string[] mapa, Vector2 origem, float tamanhoCelula)
     {
@@ -30,8 +35,11 @@ public class ConstrutorFase
         }
     }
 
-    public Labirinto Construir()
+    // modeloItem: item usado como molde quando faltam itens na cena (ex.: na fase 2,
+    // os itens originais da cena já foram coletados). Pode ser null.
+    public Labirinto Construir(GameObject modeloItem)
     {
+        this.modeloItem = modeloItem;
         pastaFase = new GameObject("Fase").transform;
 
         CriarGrade();
@@ -39,6 +47,7 @@ public class ConstrutorFase
         PosicionarJogador();
         PosicionarItens();
         CriarCoracoes();
+        CriarPorta();
         CriarInimigos();
 
         return labirinto;
@@ -98,12 +107,12 @@ public class ConstrutorFase
     }
 
     // Reaproveita os itens que já estão na cena (movendo-os para as posições do mapa).
-    // Se faltar item, copia um existente; se sobrar, o excedente é removido.
+    // Se faltar item, copia o modelo; se sobrar, o excedente é removido.
     private void PosicionarItens()
     {
         GameObject[] existentes = ItensDaCena();
         List<Vector2Int> posicoes = new List<Vector2Int>(Posicoes('I'));
-        GameObject modelo = existentes.Length > 0 ? existentes[0] : null;
+        GameObject modelo = modeloItem != null ? modeloItem : (existentes.Length > 0 ? existentes[0] : null);
 
         for (int i = 0; i < posicoes.Count; i++)
         {
@@ -136,6 +145,19 @@ public class ConstrutorFase
         foreach (Vector2Int c in Posicoes('C'))
         {
             ItemFactory.CriarCoracao(labirinto.CentroDe(c)).transform.SetParent(pastaFase, true);
+        }
+    }
+
+    private void CriarPorta()
+    {
+        foreach (Vector2Int c in Posicoes('D'))
+        {
+            GameObject porta = new GameObject("Porta");
+            porta.transform.SetParent(pastaFase, false);
+            porta.transform.position = labirinto.CentroDe(c);
+            porta.transform.localScale = new Vector3(celula * 0.9f, celula, 1f); // um pouco mais alta que larga
+            Porta = porta.AddComponent<Porta>();
+            break; // uma porta por fase
         }
     }
 

@@ -3,12 +3,13 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
-// Regras da partida: cronômetro, contagem regressiva, itens, vidas, vitória/derrota e recorde.
+// Regras da partida: cronômetro, contagem regressiva, itens, vidas, fases, vitória/derrota e recorde.
 //
 // Padrões de projeto:
 // - Singleton: existe um único GameManager, acessível de qualquer script por GameManager.Instance.
 // - Observer: em vez de mexer na tela diretamente, o GameManager dispara eventos
-//   (TempoAlterado, PartidaTerminou). Quem quiser reagir (ex.: GameHUD) se inscreve neles.
+//   (TempoAlterado, ItensConcluidos, PartidaTerminou...). Quem quiser reagir (GameHUD, Porta)
+//   se inscreve neles.
 //   Assim as regras do jogo não dependem da interface. O GameManager também é observador:
 //   escuta o evento Morreu da Vida do jogador para encerrar a partida.
 // - Máquina de estados: a partida está sempre em um estado (Menu, Jogando ou Fim),
@@ -19,7 +20,9 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance { get; private set; }
 
     public const string TagColetavel = "Coletavel";
-    private const string ChaveRecorde = "MelhorTempo";
+    // Chave nova: o recorde agora é o tempo para passar por todas as fases,
+    // então não pode ser comparado com recordes da versão de uma fase só
+    private const string ChaveRecorde = "MelhorTempoTodasFases";
 
     [Header("Mecânica de Tempo")]
     [Tooltip("Tempo inicial (em segundos) para coletar todos os itens")]
@@ -29,17 +32,22 @@ public class GameManager : MonoBehaviour
     [Tooltip("Segundos ganhos ao coletar cada item")]
     public float bonusPorItem = 3f;
 
+    [Tooltip("Segundos ganhos ao passar pela porta e entrar em uma nova fase")]
+    public float bonusPorFase = 30f;
+
     
     [Tooltip("Abaixo desse tempo restante o contador fica vermelho")]
     public float tempoAlerta = 5f;
 
     [Header("Fase")]
-    [Tooltip("Monta o labirinto descrito em MapaFase: paredes, itens, corações, inimigos e posição do jogador")]
+    [Tooltip("Monta os labirintos descritos em MapaFase: paredes, itens, corações, porta, inimigos e posição do jogador")]
     public bool construirLabirinto = true;
 
     // Eventos (Observer). O float é a variação do tempo: positivo = bônus, negativo = penalidade.
     public event Action PartidaIniciada;
     public event Action<float> TempoAlterado;
+    public event Action ItensConcluidos;        // todos os itens da fase coletados: a porta abre
+    public event Action<int> FaseIniciada;      // número da nova fase (começando em 1)
     public event Action<ResultadoPartida> PartidaTerminou;
 
     // Estado da partida: qualquer um pode ler, só o GameManager altera.
@@ -49,6 +57,9 @@ public class GameManager : MonoBehaviour
     public int ItensTotal { get; private set; }
     public EstadoJogo Estado { get; private set; } = EstadoJogo.Menu;
     public bool JogoAtivo => Estado == EstadoJogo.Jogando;
+    public bool TodosItensColetados => ItensColetados >= ItensTotal;
+    public int FaseAtual => indiceFase + 1;
+    public int TotalFases => construirLabirinto ? MapaFase.Fases.Length : 1;
 
     // Vida do jogador, exposta para o HUD desenhar os corações
     public Vida VidaJogador { get; private set; }
@@ -56,6 +67,12 @@ public class GameManager : MonoBehaviour
     // Ao reiniciar com R a cena é recarregada; este valor estático sobrevive à recarga
     // e faz a nova partida começar direto, sem passar pelo menu.
     private static bool pularMenu;
+
+    private int indiceFase;
+    private Transform raizFase;         // objetos da fase atual (destruídos ao trocar de fase)
+    private Porta porta;                // null se a fase não tiver porta
+    private GameObject modeloItem;      // cópia desativada de um item, usada para criar itens nas próximas fases
+    private bool concluirFasePendente;  // a troca de fase espera o próximo Update (fora dos eventos de colisão)
 
     // Garante que toda cena carregada tenha um GameManager, sem precisar colocá-lo à mão.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -102,13 +119,15 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        // A fase é montada antes de contar os itens, porque ela pode mover, copiar ou remover itens da cena
         if (construirLabirinto)
         {
-            new ConstrutorFase(MapaFase.Layout, MapaFase.Origem, MapaFase.TamanhoCelula).Construir();
+            GuardarModeloItem();
+            CarregarFase(0);
         }
-
-        ItensTotal = ContarItens();
+        else
+        {
+            ItensTotal = ContarItens();
+        }
 
         if (pularMenu)
         {
@@ -126,6 +145,12 @@ public class GameManager : MonoBehaviour
         switch (Estado)
         {
             case EstadoJogo.Jogando:
+                if (concluirFasePendente)
+                {
+                    concluirFasePendente = false;
+                    ConcluirFase();
+                    if (!JogoAtivo) break; // era a última fase: a partida terminou
+                }
                 TempoDecorrido += Time.deltaTime;
                 TempoRestante -= Time.deltaTime;
                 VerificarTempoEsgotado();
@@ -160,10 +185,67 @@ public class GameManager : MonoBehaviour
         ItensColetados++;
         AlterarTempo(bonusPorItem);
 
-        if (ItensTotal > 0 && ItensColetados >= ItensTotal)
+        if (!TodosItensColetados) return;
+
+        // Com porta, ela abre e o jogador precisa chegar até ela; sem porta, a fase termina aqui
+        if (porta != null) ItensConcluidos?.Invoke();
+        else concluirFasePendente = true;
+    }
+
+    // Chamado pela Porta quando o jogador entra nela (ela só chama se estiver aberta)
+    public void EntrarNaPorta()
+    {
+        if (JogoAtivo && TodosItensColetados) concluirFasePendente = true;
+    }
+
+    // Vai para a próxima fase ou, se era a última, vence o jogo
+    private void ConcluirFase()
+    {
+        if (FaseAtual < TotalFases)
+        {
+            CarregarFase(indiceFase + 1);
+            AlterarTempo(bonusPorFase);
+        }
+        else
         {
             TerminarPartida(MotivoFim.Vitoria);
         }
+    }
+
+    // Troca o mapa sem recarregar a cena: jogador, vida, tempo e HUD continuam os mesmos
+    private void CarregarFase(int indice)
+    {
+        if (raizFase != null)
+        {
+            // Desativa na hora (o Destroy só acontece no fim do frame) para que os objetos
+            // antigos não colidam nem entrem na contagem de itens da fase nova
+            raizFase.gameObject.SetActive(false);
+            Destroy(raizFase.gameObject);
+        }
+
+        indiceFase = indice;
+        ConstrutorFase construtor = new ConstrutorFase(MapaFase.Fases[indice], MapaFase.Origem, MapaFase.TamanhoCelula);
+        construtor.Construir(modeloItem);
+        raizFase = construtor.Raiz;
+        porta = construtor.Porta;
+
+        // A fase é montada antes de contar os itens, porque ela pode mover, copiar ou remover itens
+        ItensColetados = 0;
+        ItensTotal = ContarItens();
+
+        FaseIniciada?.Invoke(FaseAtual);
+    }
+
+    // Guarda uma cópia desativada de um item da cena para servir de molde nas próximas fases
+    // (quando o jogador chega lá, os itens originais da cena já foram coletados)
+    private void GuardarModeloItem()
+    {
+        GameObject[] itens = ItensDaCena();
+        if (itens.Length == 0) return;
+
+        modeloItem = Instantiate(itens[0], transform);
+        modeloItem.name = "ModeloItem";
+        modeloItem.SetActive(false); // desativado: invisível, sem colisão e fora da contagem
     }
 
     // Chamado pelos inimigos ao atingir o jogador
@@ -206,6 +288,8 @@ public class GameManager : MonoBehaviour
             TempoRestante = TempoRestante,
             ItensColetados = ItensColetados,
             ItensTotal = ItensTotal,
+            Fase = FaseAtual,
+            TotalFases = TotalFases,
         };
 
         if (resultado.Venceu) RegistrarRecorde(resultado);
@@ -235,16 +319,19 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
-    private static int ContarItens()
+    private static int ContarItens() => ItensDaCena().Length;
+
+    // Itens ativos na cena (objetos desativados não entram)
+    private static GameObject[] ItensDaCena()
     {
         try
         {
-            return GameObject.FindGameObjectsWithTag(TagColetavel).Length;
+            return GameObject.FindGameObjectsWithTag(TagColetavel);
         }
         catch (UnityException) // a Unity lança exceção se a tag não existir no projeto
         {
             Debug.LogWarning($"A tag '{TagColetavel}' não existe. Crie-a em Tags & Layers.");
-            return 0;
+            return new GameObject[0];
         }
     }
 }
@@ -262,6 +349,8 @@ public class ResultadoPartida
     public float TempoRestante;
     public int ItensColetados;
     public int ItensTotal;
+    public int Fase;
+    public int TotalFases;
     public float MelhorTempo;
     public bool NovoRecorde;
 }

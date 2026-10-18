@@ -75,11 +75,10 @@ public class MenuInicial : MonoBehaviour
 
         return
             "<b>Objetivo</b>\n" +
-            "Ande pelo labirinto e colete todos os itens amarelos antes que o tempo acabe.\n\n" +
-            "<b>Controles</b>\n" +
-            "Mova-se com W A S D ou com as setas.\n\n" +
+            $"Atravesse os {jogo.TotalFases} labirintos. Mova-se com W A S D ou com as setas.\n" +
+            "Colete todos os itens amarelos da fase para abrir a <color=#55FF77>porta</color> e entre nela.\n\n" +
             "<b>Tempo</b>\n" +
-            $"Você começa com {jogo.tempoLimite:0} segundos e cada item coletado dá +{jogo.bonusPorItem:0} segundos.\n" +
+            $"Você começa com {jogo.tempoLimite:0}s. Cada item dá +{jogo.bonusPorItem:0}s e cada nova fase, +{jogo.bonusPorFase:0}s.\n" +
             "Se o tempo chegar a zero, você perde.\n\n" +
             "<b>Vidas</b>\n" +
             $"Você tem {vidas} corações. Se acabarem, você perde.\n" +
@@ -105,7 +104,7 @@ public class MenuInicial : MonoBehaviour
         titulo.text = "<b>JOGO INTRO</b>";
 
         Text subtitulo = UIFactory.CriarTexto(principal, "Subtitulo", new Vector2(0.5f, 0.5f), new Vector2(0, 140), TextAnchor.MiddleCenter, 40);
-        subtitulo.text = "Encontre todos os itens no labirinto antes que o tempo acabe!";
+        subtitulo.text = "Colete os itens, abra a porta e escape dos labirintos!";
 
         botaoIniciar = UIFactory.CriarBotao(principal, "Iniciar Jogo", -20, IniciarJogo);
         UIFactory.CriarBotao(principal, "Regras", -140, MostrarRegras);

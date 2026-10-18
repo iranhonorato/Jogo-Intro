@@ -7,17 +7,21 @@ using UnityEngine;
 // desenha o MapaFase por cima da cena para mostrar como a fase vai ficar, sem criar objetos.
 // Fica numa pasta "Editor", então não vai para o jogo final.
 // Liga/desliga pelo menu: Jogo Intro > Pré-visualizar labirinto.
+// Troca a fase mostrada pelo menu: Jogo Intro > Pré-visualizar próxima fase.
 [InitializeOnLoad]
 public static class PreviewFase
 {
     private const string Menu = "Jogo Intro/Pré-visualizar labirinto";
+    private const string MenuProxima = "Jogo Intro/Pré-visualizar próxima fase";
     private const string ChaveAtivo = "JogoIntro.PreviewFase";
+    private const string ChaveFase = "JogoIntro.PreviewFase.Indice";
 
     private static readonly Color CorParede = new Color(1f, 1f, 1f, 0.55f);
     private static readonly Color CorJogador = new Color(0.75f, 0.2f, 0.25f);
     private static readonly Color CorItem = new Color(1f, 0.9f, 0.2f);
     private static readonly Color CorCoracao = new Color(1f, 0.25f, 0.35f);
     private static readonly Color CorInimigo = new Color(0.55f, 0.2f, 0.8f);
+    private static readonly Color CorPorta = new Color(0.3f, 1f, 0.45f);
 
     private static GUIStyle estiloRotulo;
 
@@ -39,6 +43,21 @@ public static class PreviewFase
         SceneView.RepaintAll();
     }
 
+    // Índice da fase mostrada (sempre dentro do total, mesmo se alguma fase for removida)
+    private static int IndiceFase
+    {
+        get => Mathf.Clamp(EditorPrefs.GetInt(ChaveFase, 0), 0, MapaFase.Fases.Length - 1);
+        set => EditorPrefs.SetInt(ChaveFase, value);
+    }
+
+    [MenuItem(MenuProxima)]
+    private static void ProximaFase()
+    {
+        IndiceFase = (IndiceFase + 1) % MapaFase.Fases.Length;
+        Ativo = true;
+        SceneView.RepaintAll();
+    }
+
     [MenuItem(Menu, true)]
     private static bool AtualizarMarcaDoMenu()
     {
@@ -51,10 +70,14 @@ public static class PreviewFase
         // Durante o Play o labirinto real já está na cena
         if (!Ativo || EditorApplication.isPlayingOrWillChangePlaymode) return;
 
-        string[] mapa = MapaFase.Layout;
+        string[] mapa = MapaFase.Fases[IndiceFase];
         int linhas = mapa.Length;
         float celula = MapaFase.TamanhoCelula;
         Vector2 tamanho = new Vector2(celula, celula);
+
+        // Título acima do mapa, indicando qual fase está sendo mostrada
+        Vector2 topo = MapaFase.Origem + new Vector2(0f, linhas * celula + 0.4f);
+        Handles.Label(topo, $"Pré-visualização: fase {IndiceFase + 1} de {MapaFase.Fases.Length}", EditorStyles.whiteLargeLabel);
 
         for (int i = 0; i < linhas; i++)
         {
@@ -78,6 +101,9 @@ public static class PreviewFase
                         break;
                     case 'C':
                         Marcador(centro, 0.2f, CorCoracao, "C");
+                        break;
+                    case 'D':
+                        Marcador(centro, 0.25f, CorPorta, "D");
                         break;
                     case 'E':
                     case 'H':
