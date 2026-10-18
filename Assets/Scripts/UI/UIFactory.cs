@@ -81,6 +81,31 @@ public static class UIFactory
         return texto;
     }
 
+    // Imagem ancorada em um ponto do pai, com contorno escuro (como os textos)
+    public static Image CriarImagem(Transform pai, string nome, Sprite sprite, Vector2 ancora,
+                                    Vector2 posicao, Vector2 tamanho)
+    {
+        GameObject go = new GameObject(nome, typeof(RectTransform), typeof(Image));
+        RectTransform rt = go.GetComponent<RectTransform>();
+        rt.SetParent(pai, false);
+        rt.anchorMin = ancora;
+        rt.anchorMax = ancora;
+        rt.pivot = ancora;
+        rt.anchoredPosition = posicao;
+        rt.sizeDelta = tamanho;
+
+        Image imagem = go.GetComponent<Image>();
+        imagem.sprite = sprite;
+        imagem.preserveAspect = true;
+        imagem.raycastTarget = false; // só decorativa: não bloqueia cliques
+
+        Outline contorno = go.AddComponent<Outline>();
+        contorno.effectColor = new Color(0f, 0f, 0f, 0.8f);
+        contorno.effectDistance = new Vector2(2, -2);
+
+        return imagem;
+    }
+
     // Botão centralizado horizontalmente; posicaoY é a distância vertical em relação ao centro
     public static Button CriarBotao(Transform pai, string rotulo, float posicaoY, UnityAction aoClicar)
     {

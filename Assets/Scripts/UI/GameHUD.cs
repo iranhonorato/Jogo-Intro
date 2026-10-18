@@ -1,18 +1,25 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-// Interface do jogo (HUD), montada por código: cronômetro, itens, tempo restante e tela final.
+// Interface do jogo (HUD), montada por código: cronômetro, itens, corações, tempo restante e tela final.
 //
-// Padrão Observer: o HUD apenas observa o GameManager. Ele lê o estado a cada frame
-// (valores que mudam sempre, como o cronômetro) e escuta eventos para o que acontece
-// de vez em quando (bônus/penalidade e fim de partida). Nunca altera as regras do jogo.
+// Padrão Observer: o HUD apenas observa o GameManager e a Vida do jogador. Ele lê o estado
+// a cada frame (valores que mudam sempre, como o cronômetro) e escuta eventos para o que
+// acontece de vez em quando (bônus/penalidade, vida alterada e fim de partida).
+// Nunca altera as regras do jogo.
 public class GameHUD : MonoBehaviour
 {
     private static readonly Color Vermelho = new Color(1f, 0.35f, 0.35f);
     private static readonly Color Verde = new Color(0.5f, 1f, 0.5f);
+    private static readonly Color CoracaoCheio = new Color(0.95f, 0.15f, 0.25f);
+    private static readonly Color CoracaoVazio = new Color(0.2f, 0.2f, 0.2f, 0.6f);
+    private const float TamanhoCoracao = 52f;
+    private const float EspacoCoracao = 60f;
     private const float DuracaoDestaque = 0.7f;
 
     private GameManager jogo;
+    private Vida vida;
+    private Image[] coracoes;
     private GameObject canvas;
     private Text textoCronometro;
     private Text textoItens;
@@ -27,11 +34,18 @@ public class GameHUD : MonoBehaviour
     void Start()
     {
         jogo = GetComponent<GameManager>();
+        vida = jogo.VidaJogador; // pode ser null se a cena não tiver jogador
         CriarInterface();
 
         jogo.PartidaIniciada += Mostrar;
         jogo.TempoAlterado += AoAlterarTempo;
         jogo.PartidaTerminou += AoTerminarPartida;
+
+        if (vida != null)
+        {
+            vida.VidaAlterada += AtualizarCoracoes;
+            AtualizarCoracoes(vida.Atual, vida.Maxima); // desenho inicial: todos cheios
+        }
 
         // Escondido enquanto o menu estiver aberto
         canvas.SetActive(jogo.Estado != EstadoJogo.Menu);
@@ -44,6 +58,7 @@ public class GameHUD : MonoBehaviour
         jogo.PartidaIniciada -= Mostrar;
         jogo.TempoAlterado -= AoAlterarTempo;
         jogo.PartidaTerminou -= AoTerminarPartida;
+        if (vida != null) vida.VidaAlterada -= AtualizarCoracoes;
     }
 
     void Update()
@@ -81,6 +96,15 @@ public class GameHUD : MonoBehaviour
         canvas.SetActive(true);
     }
 
+    // Os primeiros "atual" corações ficam cheios (vermelhos); o resto fica vazio (cinza)
+    private void AtualizarCoracoes(int atual, int maxima)
+    {
+        for (int i = 0; i < coracoes.Length; i++)
+        {
+            coracoes[i].color = i < atual ? CoracaoCheio : CoracaoVazio;
+        }
+    }
+
     private void AoAlterarTempo(float variacao)
     {
         ultimaVariacao = variacao;
@@ -90,7 +114,7 @@ public class GameHUD : MonoBehaviour
     private void AoTerminarPartida(ResultadoPartida r)
     {
         string texto;
-        if (r.Venceu)
+        if (r.Motivo == MotivoFim.Vitoria)
         {
             string recorde = r.NovoRecorde
                 ? "<color=#FFD700>NOVO RECORDE!</color>"
@@ -103,7 +127,8 @@ public class GameHUD : MonoBehaviour
         }
         else
         {
-            texto = "<color=#FF6060>TEMPO ESGOTADO!</color>\n\n" +
+            string titulo = r.Motivo == MotivoFim.SemVidas ? "SEM VIDAS!" : "TEMPO ESGOTADO!";
+            texto = $"<color=#FF6060>{titulo}</color>\n\n" +
                     $"Tempo final: {Formatar(r.TempoFinal)}\n" +
                     $"Itens coletados: {r.ItensColetados}/{r.ItensTotal}\n";
         }
@@ -129,11 +154,29 @@ public class GameHUD : MonoBehaviour
 
         textoCronometro = UIFactory.CriarTexto(raiz, "Cronometro", new Vector2(0f, 1f), new Vector2(30, -20), TextAnchor.UpperLeft, 48);
         textoItens = UIFactory.CriarTexto(raiz, "Itens", new Vector2(0.5f, 1f), new Vector2(0, -20), TextAnchor.UpperCenter, 48);
-        textoRestante = UIFactory.CriarTexto(raiz, "TempoRestante", new Vector2(1f, 1f), new Vector2(-30, -20), TextAnchor.UpperRight, 48);
+        textoRestante = UIFactory.CriarTexto(raiz, "TempoRestante", new Vector2(1f, 1f), new Vector2(-30, -90), TextAnchor.UpperRight, 48);
+        CriarCoracoes(raiz);
 
         // Painel escuro que cobre a tela inteira no fim da partida
         painelFinal = UIFactory.CriarPainel(raiz, "PainelFinal", new Color(0f, 0f, 0f, 0.75f));
         textoFinal = UIFactory.CriarTexto(painelFinal.transform, "TextoFinal", new Vector2(0.5f, 0.5f), Vector2.zero, TextAnchor.MiddleCenter, 64);
         painelFinal.SetActive(false);
+    }
+
+    // Uma fileira de corações no canto superior direito, alinhada pela direita
+    private void CriarCoracoes(Transform raiz)
+    {
+        int quantidade = vida != null ? vida.Maxima : 0;
+        coracoes = new Image[quantidade];
+
+        Vector2 cantoSuperiorDireito = new Vector2(1f, 1f);
+        Vector2 tamanho = new Vector2(TamanhoCoracao, TamanhoCoracao);
+
+        for (int i = 0; i < quantidade; i++)
+        {
+            float x = -30f - (quantidade - 1 - i) * EspacoCoracao; // o último coração fica mais à direita
+            coracoes[i] = UIFactory.CriarImagem(raiz, "Coracao " + (i + 1), SpriteFactory.Coracao(),
+                                                cantoSuperiorDireito, new Vector2(x, -25f), tamanho);
+        }
     }
 }

@@ -32,7 +32,6 @@ public class Enemy : MonoBehaviour
     public float pausaAposAtacar = 0.5f;
 
     private static readonly Color CorPadrao = new Color(0.55f, 0.2f, 0.8f);
-    private static Sprite spritePadrao;
 
     private Rigidbody2D rb;
     private SpriteRenderer sr;
@@ -128,10 +127,10 @@ public class Enemy : MonoBehaviour
 
         if (sr.sprite == null)
         {
-            sr.sprite = SpritePadrao();
+            sr.sprite = SpriteFactory.Quadrado();
             sr.color = CorPadrao;
         }
-        sr.sortingOrder = Mathf.Max(sr.sortingOrder, 10); // na frente do cenário
+        sr.sortingOrder = OrdemDesenho.Inimigos; // na frente do cenário, atrás do jogador
         corOriginal = sr.color;
     }
 
@@ -139,18 +138,6 @@ public class Enemy : MonoBehaviour
     {
         if (!TryGetComponent(out Collider2D col)) col = gameObject.AddComponent<BoxCollider2D>();
         col.isTrigger = true; // detecta o jogador sem bloqueá-lo fisicamente
-    }
-
-    // Quadrado branco de 1x1 unidade, criado uma vez e compartilhado por todos os inimigos
-    private static Sprite SpritePadrao()
-    {
-        if (spritePadrao == null)
-        {
-            Texture2D textura = Texture2D.whiteTexture; // textura 4x4 que já vem na Unity
-            spritePadrao = Sprite.Create(textura, new Rect(0, 0, textura.width, textura.height),
-                                         new Vector2(0.5f, 0.5f), textura.width);
-        }
-        return spritePadrao;
     }
 
     // ---------- Ajudas visuais no editor (aba Scene) ----------

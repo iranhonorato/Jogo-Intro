@@ -3,13 +3,14 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
-// Regras da partida: cronômetro, contagem regressiva, itens, vitória/derrota e recorde.
+// Regras da partida: cronômetro, contagem regressiva, itens, vidas, vitória/derrota e recorde.
 //
 // Padrões de projeto:
 // - Singleton: existe um único GameManager, acessível de qualquer script por GameManager.Instance.
 // - Observer: em vez de mexer na tela diretamente, o GameManager dispara eventos
 //   (TempoAlterado, PartidaTerminou). Quem quiser reagir (ex.: GameHUD) se inscreve neles.
-//   Assim as regras do jogo não dependem da interface.
+//   Assim as regras do jogo não dependem da interface. O GameManager também é observador:
+//   escuta o evento Morreu da Vida do jogador para encerrar a partida.
 // - Máquina de estados: a partida está sempre em um estado (Menu, Jogando ou Fim),
 //   e cada estado define o que o Update faz e quais ações são permitidas.
 [RequireComponent(typeof(GameHUD), typeof(MenuInicial))]
@@ -36,6 +37,10 @@ public class GameManager : MonoBehaviour
     [Tooltip("Cria um conjunto de inimigos automaticamente se a cena não tiver nenhum")]
     public bool criarInimigosAutomaticamente = true;
 
+    [Header("Itens")]
+    [Tooltip("Cria 3 corações de vida automaticamente se a cena não tiver nenhum")]
+    public bool criarCoracoesAutomaticamente = true;
+
     // Eventos (Observer). O float é a variação do tempo: positivo = bônus, negativo = penalidade.
     public event Action PartidaIniciada;
     public event Action<float> TempoAlterado;
@@ -48,6 +53,9 @@ public class GameManager : MonoBehaviour
     public int ItensTotal { get; private set; }
     public EstadoJogo Estado { get; private set; } = EstadoJogo.Menu;
     public bool JogoAtivo => Estado == EstadoJogo.Jogando;
+
+    // Vida do jogador, exposta para o HUD desenhar os corações
+    public Vida VidaJogador { get; private set; }
 
     // Ao reiniciar com R a cena é recarregada; este valor estático sobrevive à recarga
     // e faz a nova partida começar direto, sem passar pelo menu.
@@ -80,11 +88,20 @@ public class GameManager : MonoBehaviour
         Instance = this;
 
         TempoRestante = tempoLimite;
+
+        // Feito no Awake para que o HUD já encontre a vida no Start dele
+        PlayerMovement jogador = FindAnyObjectByType<PlayerMovement>();
+        if (jogador != null)
+        {
+            VidaJogador = jogador.Vida;
+            VidaJogador.Morreu += AoJogadorMorrer;
+        }
     }
 
     void OnDestroy()
     {
         if (Instance == this) Instance = null;
+        if (VidaJogador != null) VidaJogador.Morreu -= AoJogadorMorrer;
     }
 
     void Start()
@@ -94,6 +111,11 @@ public class GameManager : MonoBehaviour
         if (criarInimigosAutomaticamente && FindAnyObjectByType<Enemy>() == null)
         {
             EnemyFactory.CriarConjuntoPadrao();
+        }
+
+        if (criarCoracoesAutomaticamente && FindAnyObjectByType<CoracaoColetavel>() == null)
+        {
+            ItemFactory.CriarCoracoesPadrao();
         }
 
         if (pularMenu)
@@ -148,7 +170,7 @@ public class GameManager : MonoBehaviour
 
         if (ItensTotal > 0 && ItensColetados >= ItensTotal)
         {
-            TerminarPartida(true);
+            TerminarPartida(MotivoFim.Vitoria);
         }
     }
 
@@ -172,24 +194,29 @@ public class GameManager : MonoBehaviour
         if (TempoRestante > 0f) return;
 
         TempoRestante = 0f;
-        TerminarPartida(false);
+        TerminarPartida(MotivoFim.TempoEsgotado);
     }
 
-    private void TerminarPartida(bool venceu)
+    private void AoJogadorMorrer()
+    {
+        if (JogoAtivo) TerminarPartida(MotivoFim.SemVidas);
+    }
+
+    private void TerminarPartida(MotivoFim motivo)
     {
         Estado = EstadoJogo.Fim;
         Time.timeScale = 0f; // congela física e movimento de tudo
 
         ResultadoPartida resultado = new ResultadoPartida
         {
-            Venceu = venceu,
+            Motivo = motivo,
             TempoFinal = TempoDecorrido,
             TempoRestante = TempoRestante,
             ItensColetados = ItensColetados,
             ItensTotal = ItensTotal,
         };
 
-        if (venceu) RegistrarRecorde(resultado);
+        if (resultado.Venceu) RegistrarRecorde(resultado);
 
         PartidaTerminou?.Invoke(resultado);
     }
@@ -232,10 +259,13 @@ public class GameManager : MonoBehaviour
 
 public enum EstadoJogo { Menu, Jogando, Fim }
 
+public enum MotivoFim { Vitoria, TempoEsgotado, SemVidas }
+
 // Dados enviados no evento PartidaTerminou
 public class ResultadoPartida
 {
-    public bool Venceu;
+    public MotivoFim Motivo;
+    public bool Venceu => Motivo == MotivoFim.Vitoria;
     public float TempoFinal;
     public float TempoRestante;
     public int ItensColetados;

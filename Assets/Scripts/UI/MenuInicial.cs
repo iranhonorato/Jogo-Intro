@@ -68,7 +68,10 @@ public class MenuInicial : MonoBehaviour
     private string MontarTextoRegras()
     {
         Enemy inimigo = FindAnyObjectByType<Enemy>();
-        string penalidade = inimigo != null ? $"{inimigo.penalidadeTempo:0} segundos" : "tempo";
+        string penalidade = inimigo != null && inimigo.penalidadeTempo > 0f
+            ? $" e {inimigo.penalidadeTempo:0} segundos"
+            : "";
+        int vidas = jogo.VidaJogador != null ? jogo.VidaJogador.Maxima : 0;
 
         return
             "<b>Objetivo</b>\n" +
@@ -76,11 +79,13 @@ public class MenuInicial : MonoBehaviour
             "<b>Controles</b>\n" +
             "Mova-se com W A S D ou com as setas.\n\n" +
             "<b>Tempo</b>\n" +
-            $"Você começa com {jogo.tempoLimite:0} segundos.\n" +
-            $"Cada item coletado dá +{jogo.bonusPorItem:0} segundos.\n" +
+            $"Você começa com {jogo.tempoLimite:0} segundos e cada item coletado dá +{jogo.bonusPorItem:0} segundos.\n" +
             "Se o tempo chegar a zero, você perde.\n\n" +
+            "<b>Vidas</b>\n" +
+            $"Você tem {vidas} corações. Se acabarem, você perde.\n" +
+            "Os <color=#FF4060>corações</color> espalhados pelo mapa recuperam 1 vida.\n\n" +
             "<b>Inimigos</b>\n" +
-            $"Encostar em um inimigo tira {penalidade} e empurra você.\n" +
+            $"Encostar em um inimigo tira 1 coração{penalidade} e empurra você.\n" +
             "Alguns ficam parados, outros patrulham, e outros perseguem você.\n" +
             "Os que ficam <color=#FF9900>laranja</color> viram você e começaram a perseguir!";
     }
@@ -109,11 +114,11 @@ public class MenuInicial : MonoBehaviour
         telaRegras = UIFactory.CriarPainel(raiz, "TelaRegras", CorFundo);
         Transform regras = telaRegras.transform;
 
-        Text tituloRegras = UIFactory.CriarTexto(regras, "Titulo", new Vector2(0.5f, 0.5f), new Vector2(0, 400), TextAnchor.MiddleCenter, 80);
+        Text tituloRegras = UIFactory.CriarTexto(regras, "Titulo", new Vector2(0.5f, 0.5f), new Vector2(0, 440), TextAnchor.MiddleCenter, 80);
         tituloRegras.text = "<b>REGRAS</b>";
 
-        textoRegras = UIFactory.CriarTexto(regras, "Texto", new Vector2(0.5f, 0.5f), new Vector2(0, 20), TextAnchor.MiddleCenter, 34);
+        textoRegras = UIFactory.CriarTexto(regras, "Texto", new Vector2(0.5f, 0.5f), new Vector2(0, 20), TextAnchor.MiddleCenter, 31);
 
-        botaoVoltar = UIFactory.CriarBotao(regras, "Voltar", -400, MostrarTelaPrincipal);
+        botaoVoltar = UIFactory.CriarBotao(regras, "Voltar", -450, MostrarTelaPrincipal);
     }
 }

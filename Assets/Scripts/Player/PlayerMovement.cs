@@ -21,8 +21,20 @@ public class PlayerMovement : MonoBehaviour, IDanificavel
     private SpriteRenderer sr;
     private Vector2 empurrao;
     private float invencivelAte;
+    private Vida vida;
 
     public bool Invencivel => Time.time < invencivelAte;
+
+    // Os corações ficam no componente Vida. Se o Player da cena ainda não tiver
+    // esse componente, ele é adicionado na primeira vez que alguém pedir.
+    public Vida Vida
+    {
+        get
+        {
+            if (vida == null && !TryGetComponent(out vida)) vida = gameObject.AddComponent<Vida>();
+            return vida;
+        }
+    }
 
     void Awake()
     {
@@ -31,6 +43,7 @@ public class PlayerMovement : MonoBehaviour, IDanificavel
         // deixa de detectar um inimigo parado encostado nele
         rb.sleepMode = RigidbodySleepMode2D.NeverSleep;
         sr = GetComponent<SpriteRenderer>();
+        if (sr != null) sr.sortingOrder = OrdemDesenho.Jogador; // por cima de itens e inimigos
     }
 
     void Update()
@@ -70,12 +83,15 @@ public class PlayerMovement : MonoBehaviour, IDanificavel
     public bool ReceberDano(Vector2 direcao)
     {
         // Imediatamente após recber dano o personagem fica "Invencivel"
-        if (Invencivel) return false;
+        if (Invencivel || Vida.Morto) return false;
 
         invencivelAte = Time.time + tempoInvencivel;
 
         // Empurra o personagem caso ele colida com um inimigo
         empurrao = (direcao == Vector2.zero ? Vector2.up : direcao.normalized) * forcaEmpurrao;
+
+        // Perde um coração (se for o último, a Vida avisa o GameManager pelo evento Morreu)
+        Vida.Perder(1);
         return true;
     }
 
