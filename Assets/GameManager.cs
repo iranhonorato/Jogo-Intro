@@ -20,6 +20,10 @@ public class GameManager : MonoBehaviour
     [Tooltip("Abaixo desse tempo restante o contador fica vermelho")]
     public float tempoAlerta = 5f;
 
+    [Header("Inimigos")]
+    [Tooltip("Cria um conjunto de inimigos automaticamente se a cena não tiver nenhum")]
+    public bool criarInimigosAutomaticamente = true;
+
     private const string ChaveRecorde = "MelhorTempo";
 
     private float tempoDecorrido;
@@ -28,6 +32,8 @@ public class GameManager : MonoBehaviour
     private int itensColetados;
     private bool jogoAtivo;
     private float destaqueBonus;
+    private float destaquePenalidade;
+    private float ultimaPenalidade;
 
     private Font fonte;
     private Text textoCronometro;
@@ -68,6 +74,7 @@ public class GameManager : MonoBehaviour
         tempoRestante = tempoLimite;
         itensTotal = ContarItens();
 
+        CriarInimigosPadrao();
         CriarInterface();
         jogoAtivo = true;
     }
@@ -91,6 +98,7 @@ public class GameManager : MonoBehaviour
         }
 
         if (destaqueBonus > 0f) destaqueBonus -= Time.unscaledDeltaTime;
+        if (destaquePenalidade > 0f) destaquePenalidade -= Time.unscaledDeltaTime;
 
         AtualizarInterface();
     }
@@ -103,10 +111,28 @@ public class GameManager : MonoBehaviour
         itensColetados++;
         tempoRestante += bonusPorItem;
         destaqueBonus = 0.6f;
+        destaquePenalidade = 0f;
 
         if (itensTotal > 0 && itensColetados >= itensTotal)
         {
             FimDeJogo(true);
+        }
+    }
+
+    // Chamado pelos inimigos ao atingir o jogador
+    public void PerderTempo(float segundos)
+    {
+        if (!jogoAtivo) return;
+
+        tempoRestante -= segundos;
+        ultimaPenalidade = segundos;
+        destaquePenalidade = 0.8f;
+        destaqueBonus = 0f;
+
+        if (tempoRestante <= 0f)
+        {
+            tempoRestante = 0f;
+            FimDeJogo(false);
         }
     }
 
@@ -164,6 +190,33 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    // Cria um inimigo de cada comportamento, posicionados dentro da arena
+    private void CriarInimigosPadrao()
+    {
+        if (!criarInimigosAutomaticamente) return;
+        if (FindAnyObjectByType<Enemy>() != null) return; // a cena já tem inimigos próprios
+
+        CriarInimigo("Inimigo Parado", new Vector2(0f, 0.5f), Enemy.Comportamento.Parado, Vector2.zero, 0f, 0f);
+        CriarInimigo("Inimigo Patrulha Horizontal", new Vector2(-5f, -2.5f), Enemy.Comportamento.Patrulha, Vector2.right, 10f, 3f);
+        CriarInimigo("Inimigo Patrulha Vertical", new Vector2(3f, -3.2f), Enemy.Comportamento.Patrulha, Vector2.up, 6.4f, 2.5f);
+        CriarInimigo("Inimigo Sentinela", new Vector2(5.5f, 2.5f), Enemy.Comportamento.Sentinela, Vector2.left, 4f, 2.5f);
+        CriarInimigo("Inimigo Perseguidor", new Vector2(6f, -3.3f), Enemy.Comportamento.Perseguicao, Vector2.zero, 0f, 1.5f);
+    }
+
+    private void CriarInimigo(string nome, Vector2 posicao, Enemy.Comportamento comportamento,
+                              Vector2 direcao, float distancia, float velocidade)
+    {
+        GameObject go = new GameObject(nome);
+        go.transform.position = posicao;
+        go.transform.localScale = Vector3.one * 0.7f;
+
+        Enemy inimigo = go.AddComponent<Enemy>();
+        inimigo.comportamento = comportamento;
+        inimigo.direcaoPatrulha = direcao;
+        inimigo.distanciaPatrulha = distancia;
+        inimigo.velocidade = velocidade;
+    }
+
     // Formato mm:ss.cc
     private static string Formatar(float segundos)
     {
@@ -176,7 +229,12 @@ public class GameManager : MonoBehaviour
     {
         textoCronometro.text = $"Tempo: {Formatar(tempoDecorrido)}";
 
-        if (destaqueBonus > 0f)
+        if (destaquePenalidade > 0f)
+        {
+            textoRestante.text = $"Restante: {tempoRestante:0.0}s  -{ultimaPenalidade:0}s";
+            textoRestante.color = new Color(1f, 0.35f, 0.35f);
+        }
+        else if (destaqueBonus > 0f)
         {
             textoRestante.text = $"Restante: {tempoRestante:0.0}s  +{bonusPorItem:0}s";
             textoRestante.color = new Color(0.5f, 1f, 0.5f);
