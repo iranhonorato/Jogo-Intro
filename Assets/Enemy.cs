@@ -1,12 +1,10 @@
 using UnityEngine;
 
-// Inimigo com comportamento configurável pelo Inspector:
-// - Parado: fica imóvel, funciona como obstáculo perigoso
-// - Patrulha: vai e volta em uma direção pré-determinada
-// - Perseguicao: segue o jogador o tempo todo
-// - Sentinela: patrulha, mas persegue o jogador quando ele chega perto
-//   e volta a patrulhar quando o jogador se afasta
-// Ao encostar no jogador, ele perde tempo, é empurrado e fica invencível por um instante.
+// Inimigo que tira tempo do jogador ao encostar nele.
+//
+// O movimento usa o padrão Strategy (ver ComportamentosInimigo.cs): o Enemy não sabe
+// COMO se mover; ele só escolhe a estratégia certa conforme o Inspector e a executa.
+// O dano usa a interface IDanificavel, então o Enemy não depende do PlayerMovement.
 [RequireComponent(typeof(Rigidbody2D))]
 public class Enemy : MonoBehaviour
 {
@@ -33,168 +31,138 @@ public class Enemy : MonoBehaviour
     [Tooltip("Tempo que o inimigo fica parado depois de acertar o jogador")]
     public float pausaAposAtacar = 0.5f;
 
+    private static readonly Color CorPadrao = new Color(0.55f, 0.2f, 0.8f);
+    private static Sprite spritePadrao;
+
     private Rigidbody2D rb;
     private SpriteRenderer sr;
     private Color corOriginal;
-    private Transform alvo;
     private Vector2 pontoInicial;
-    private bool indo = true;
-    private bool perseguindo;
     private float pausadoAte;
+    private IComportamentoInimigo estrategia;
+
+    // Usados pelas estratégias
+    public Vector2 Posicao => rb.position;
+    public Transform Alvo { get; private set; }
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        rb.bodyType = RigidbodyType2D.Kinematic;
-        rb.interpolation = RigidbodyInterpolation2D.Interpolate;
+        rb.bodyType = RigidbodyType2D.Kinematic; // movido só por código (sem gravidade nem empurrões)
+        rb.interpolation = RigidbodyInterpolation2D.Interpolate; // movimento mais suave na tela
 
-        // Garante que o inimigo apareça na tela, mesmo se foi criado como objeto vazio
-        sr = GetComponent<SpriteRenderer>();
-        if (sr == null) sr = gameObject.AddComponent<SpriteRenderer>();
-        if (sr.sprite == null)
-        {
-            sr.sprite = CriarSpritePadrao();
-            sr.color = corPadrao;
-        }
-        if (sr.color.a < 0.1f) sr.color = corPadrao;
-        if (sr.sortingOrder < 10) sr.sortingOrder = 10; // desenha na frente do cenário
-        corOriginal = sr.color;
-
-        // Z = 0 para não ficar atrás da câmera
-        Vector3 posicao = transform.position;
-        posicao.z = 0f;
-        transform.position = posicao;
-
-        // Garante um collider do tipo trigger para detectar o jogador
-        // (criado depois do sprite para pegar o tamanho certo)
-        Collider2D col = GetComponent<Collider2D>();
-        if (col == null) col = gameObject.AddComponent<CircleCollider2D>();
-        col.isTrigger = true;
-    }
-
-    private static readonly Color corPadrao = new Color(0.55f, 0.2f, 0.8f);
-    private static Sprite spritePadrao;
-
-    // Sprite quadrado branco de 1x1 unidade gerado por código
-    private static Sprite CriarSpritePadrao()
-    {
-        if (spritePadrao != null) return spritePadrao;
-
-        const int tamanho = 64;
-        Texture2D textura = new Texture2D(tamanho, tamanho);
-        Color[] pixels = new Color[tamanho * tamanho];
-        for (int i = 0; i < pixels.Length; i++) pixels[i] = Color.white;
-        textura.SetPixels(pixels);
-        textura.Apply();
-
-        spritePadrao = Sprite.Create(textura, new Rect(0, 0, tamanho, tamanho), new Vector2(0.5f, 0.5f), tamanho);
-        return spritePadrao;
+        GarantirVisual();
+        GarantirCollider(); // depois do visual, para o collider pegar o tamanho do sprite
     }
 
     void Start()
     {
+        // Feito no Start (e não no Awake) para respeitar valores definidos logo após a criação,
+        // como faz a EnemyFactory
         pontoInicial = rb.position;
 
         PlayerMovement jogador = FindAnyObjectByType<PlayerMovement>();
-        if (jogador != null) alvo = jogador.transform;
+        if (jogador != null) Alvo = jogador.transform;
+
+        estrategia = CriarEstrategia();
+    }
+
+    // Traduz a opção do Inspector para a estratégia correspondente
+    private IComportamentoInimigo CriarEstrategia()
+    {
+        switch (comportamento)
+        {
+            case Comportamento.Patrulha:
+                return new ComportamentoPatrulha(pontoInicial, direcaoPatrulha, distanciaPatrulha);
+            case Comportamento.Perseguicao:
+                return new ComportamentoPerseguicao();
+            case Comportamento.Sentinela:
+                var patrulha = new ComportamentoPatrulha(pontoInicial, direcaoPatrulha, distanciaPatrulha);
+                return new ComportamentoSentinela(patrulha, raioDeteccao, raioDesistir);
+            default:
+                return new ComportamentoParado();
+        }
     }
 
     void FixedUpdate()
     {
-        if (Time.time < pausadoAte) return;
-
-        switch (comportamento)
-        {
-            case Comportamento.Parado:
-                break;
-
-            case Comportamento.Patrulha:
-                Patrulhar();
-                break;
-
-            case Comportamento.Perseguicao:
-                Perseguir();
-                break;
-
-            case Comportamento.Sentinela:
-                AtualizarSentinela();
-                break;
-        }
+        if (Time.time < pausadoAte) return; // parado logo depois de atacar
+        estrategia.Atualizar(this);
     }
 
-    private void Patrulhar()
-    {
-        Vector2 pontoFinal = pontoInicial + direcaoPatrulha.normalized * distanciaPatrulha;
-        Vector2 destino = indo ? pontoFinal : pontoInicial;
-
-        MoverPara(destino);
-
-        if (Vector2.Distance(rb.position, destino) < 0.05f)
-        {
-            indo = !indo;
-        }
-    }
-
-    private void Perseguir()
-    {
-        if (alvo == null) return;
-        MoverPara(alvo.position);
-    }
-
-    private void AtualizarSentinela()
-    {
-        float distancia = alvo != null ? Vector2.Distance(rb.position, alvo.position) : Mathf.Infinity;
-
-        if (!perseguindo && distancia <= raioDeteccao) perseguindo = true;
-        else if (perseguindo && distancia > raioDesistir) perseguindo = false;
-
-        if (sr != null) sr.color = perseguindo ? corPerseguindo : corOriginal;
-
-        if (perseguindo) Perseguir();
-        else Patrulhar();
-    }
-
-    private void MoverPara(Vector2 destino)
+    public void MoverPara(Vector2 destino)
     {
         rb.MovePosition(Vector2.MoveTowards(rb.position, destino, velocidade * Time.fixedDeltaTime));
     }
 
-    void OnTriggerEnter2D(Collider2D other)
+    public void MostrarAlerta(bool alerta)
     {
-        TentarAtacar(other);
+        sr.color = alerta ? corPerseguindo : corOriginal;
     }
 
-    void OnTriggerStay2D(Collider2D other)
-    {
-        TentarAtacar(other);
-    }
+    // Enter: no primeiro toque. Stay: continua tentando enquanto encostado
+    // (o dano só acontece de novo quando a invencibilidade do jogador acabar).
+    void OnTriggerEnter2D(Collider2D other) => TentarAtacar(other);
+    void OnTriggerStay2D(Collider2D other) => TentarAtacar(other);
 
     private void TentarAtacar(Collider2D other)
     {
-        PlayerMovement jogador = other.GetComponent<PlayerMovement>();
-        if (jogador == null) return;
+        if (!other.TryGetComponent(out IDanificavel alvoDano)) return;
 
         Vector2 direcao = (Vector2)other.transform.position - rb.position;
-        if (direcao == Vector2.zero) direcao = Vector2.up;
+        if (!alvoDano.ReceberDano(direcao)) return; // alvo invencível: nada acontece
 
-        if (jogador.LevarDano(direcao))
+        if (GameManager.Instance != null)
         {
-            if (GameManager.Instance != null)
-            {
-                GameManager.Instance.PerderTempo(penalidadeTempo);
-            }
-            pausadoAte = Time.time + pausaAposAtacar;
+            GameManager.Instance.PerderTempo(penalidadeTempo);
         }
+        pausadoAte = Time.time + pausaAposAtacar;
     }
 
-    // Mostra um contorno roxo na aba Scene, mesmo se o inimigo não tiver sprite
+    // ---------- Configuração automática ----------
+
+    // Permite criar o inimigo a partir de um objeto vazio: adiciona sprite e cor se faltarem
+    private void GarantirVisual()
+    {
+        if (!TryGetComponent(out sr)) sr = gameObject.AddComponent<SpriteRenderer>();
+
+        if (sr.sprite == null)
+        {
+            sr.sprite = SpritePadrao();
+            sr.color = CorPadrao;
+        }
+        sr.sortingOrder = Mathf.Max(sr.sortingOrder, 10); // na frente do cenário
+        corOriginal = sr.color;
+    }
+
+    private void GarantirCollider()
+    {
+        if (!TryGetComponent(out Collider2D col)) col = gameObject.AddComponent<BoxCollider2D>();
+        col.isTrigger = true; // detecta o jogador sem bloqueá-lo fisicamente
+    }
+
+    // Quadrado branco de 1x1 unidade, criado uma vez e compartilhado por todos os inimigos
+    private static Sprite SpritePadrao()
+    {
+        if (spritePadrao == null)
+        {
+            Texture2D textura = Texture2D.whiteTexture; // textura 4x4 que já vem na Unity
+            spritePadrao = Sprite.Create(textura, new Rect(0, 0, textura.width, textura.height),
+                                         new Vector2(0.5f, 0.5f), textura.width);
+        }
+        return spritePadrao;
+    }
+
+    // ---------- Ajudas visuais no editor (aba Scene) ----------
+
+    // Contorno roxo sempre visível, mesmo se o inimigo não tiver sprite
     void OnDrawGizmos()
     {
-        Gizmos.color = corPadrao;
+        Gizmos.color = CorPadrao;
         Gizmos.DrawWireCube(transform.position, transform.localScale);
     }
 
-    // Desenha no editor o caminho da patrulha e o raio de detecção
+    // Com o inimigo selecionado: rota da patrulha (amarelo) e raios da sentinela
     void OnDrawGizmosSelected()
     {
         Vector2 inicio = Application.isPlaying ? pontoInicial : (Vector2)transform.position;
@@ -209,7 +177,7 @@ public class Enemy : MonoBehaviour
         {
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere(transform.position, raioDeteccao);
-            Gizmos.color = new Color(1f, 0.5f, 0f);
+            Gizmos.color = corPerseguindo;
             Gizmos.DrawWireSphere(transform.position, raioDesistir);
         }
     }
