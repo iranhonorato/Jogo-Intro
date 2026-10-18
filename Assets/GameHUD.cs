@@ -13,7 +13,7 @@ public class GameHUD : MonoBehaviour
     private const float DuracaoDestaque = 0.7f;
 
     private GameManager jogo;
-    private Font fonte;
+    private GameObject canvas;
     private Text textoCronometro;
     private Text textoItens;
     private Text textoRestante;
@@ -29,20 +29,27 @@ public class GameHUD : MonoBehaviour
         jogo = GetComponent<GameManager>();
         CriarInterface();
 
+        jogo.PartidaIniciada += Mostrar;
         jogo.TempoAlterado += AoAlterarTempo;
         jogo.PartidaTerminou += AoTerminarPartida;
+
+        // Escondido enquanto o menu estiver aberto
+        canvas.SetActive(jogo.Estado != EstadoJogo.Menu);
     }
 
     void OnDestroy()
     {
         // Sempre cancelar a inscrição em eventos para não deixar referências soltas
         if (jogo == null) return;
+        jogo.PartidaIniciada -= Mostrar;
         jogo.TempoAlterado -= AoAlterarTempo;
         jogo.PartidaTerminou -= AoTerminarPartida;
     }
 
     void Update()
     {
+        if (!canvas.activeSelf) return;
+
         textoCronometro.text = $"Tempo: {Formatar(jogo.TempoDecorrido)}";
         textoItens.text = $"Itens: {jogo.ItensColetados}/{jogo.ItensTotal}";
         AtualizarTempoRestante();
@@ -67,6 +74,11 @@ public class GameHUD : MonoBehaviour
 
         textoRestante.text = texto;
         textoRestante.color = cor;
+    }
+
+    private void Mostrar()
+    {
+        canvas.SetActive(true);
     }
 
     private void AoAlterarTempo(float variacao)
@@ -96,7 +108,8 @@ public class GameHUD : MonoBehaviour
                     $"Itens coletados: {r.ItensColetados}/{r.ItensTotal}\n";
         }
 
-        textoFinal.text = texto + "\n<size=36>Pressione R para jogar novamente</size>";
+        textoFinal.text = texto +
+            "\n<size=36>Pressione R para jogar novamente\nPressione M para voltar ao menu</size>";
         painelFinal.SetActive(true);
     }
 
@@ -111,62 +124,16 @@ public class GameHUD : MonoBehaviour
 
     private void CriarInterface()
     {
-        fonte = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        Transform raiz = UIFactory.CriarCanvas("HUD", 100);
+        canvas = raiz.gameObject;
 
-        GameObject canvasGO = new GameObject("HUD", typeof(Canvas), typeof(CanvasScaler));
-        Canvas canvas = canvasGO.GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 100; // por cima de tudo
-
-        // Escala a interface conforme o tamanho da tela, usando 1920x1080 como referência
-        CanvasScaler scaler = canvasGO.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920, 1080);
-        scaler.matchWidthOrHeight = 0.5f;
-
-        Transform raiz = canvas.transform;
-        textoCronometro = CriarTexto(raiz, "Cronometro", new Vector2(0f, 1f), new Vector2(30, -20), TextAnchor.UpperLeft, 48);
-        textoItens = CriarTexto(raiz, "Itens", new Vector2(0.5f, 1f), new Vector2(0, -20), TextAnchor.UpperCenter, 48);
-        textoRestante = CriarTexto(raiz, "TempoRestante", new Vector2(1f, 1f), new Vector2(-30, -20), TextAnchor.UpperRight, 48);
+        textoCronometro = UIFactory.CriarTexto(raiz, "Cronometro", new Vector2(0f, 1f), new Vector2(30, -20), TextAnchor.UpperLeft, 48);
+        textoItens = UIFactory.CriarTexto(raiz, "Itens", new Vector2(0.5f, 1f), new Vector2(0, -20), TextAnchor.UpperCenter, 48);
+        textoRestante = UIFactory.CriarTexto(raiz, "TempoRestante", new Vector2(1f, 1f), new Vector2(-30, -20), TextAnchor.UpperRight, 48);
 
         // Painel escuro que cobre a tela inteira no fim da partida
-        painelFinal = new GameObject("PainelFinal", typeof(RectTransform), typeof(Image));
-        RectTransform rtPainel = painelFinal.GetComponent<RectTransform>();
-        rtPainel.SetParent(raiz, false);
-        rtPainel.anchorMin = Vector2.zero;
-        rtPainel.anchorMax = Vector2.one;
-        rtPainel.offsetMin = Vector2.zero;
-        rtPainel.offsetMax = Vector2.zero;
-        painelFinal.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.75f);
-
-        textoFinal = CriarTexto(painelFinal.transform, "TextoFinal", new Vector2(0.5f, 0.5f), Vector2.zero, TextAnchor.MiddleCenter, 64);
+        painelFinal = UIFactory.CriarPainel(raiz, "PainelFinal", new Color(0f, 0f, 0f, 0.75f));
+        textoFinal = UIFactory.CriarTexto(painelFinal.transform, "TextoFinal", new Vector2(0.5f, 0.5f), Vector2.zero, TextAnchor.MiddleCenter, 64);
         painelFinal.SetActive(false);
-    }
-
-    // Cria um texto ancorado em um ponto da tela (ex.: (0,1) = canto superior esquerdo)
-    private Text CriarTexto(Transform pai, string nome, Vector2 ancora, Vector2 posicao, TextAnchor alinhamento, int tamanho)
-    {
-        GameObject go = new GameObject(nome, typeof(RectTransform), typeof(Text));
-        RectTransform rt = go.GetComponent<RectTransform>();
-        rt.SetParent(pai, false);
-        rt.anchorMin = ancora;
-        rt.anchorMax = ancora;
-        rt.pivot = ancora;
-        rt.anchoredPosition = posicao;
-
-        Text texto = go.GetComponent<Text>();
-        texto.font = fonte;
-        texto.fontSize = tamanho;
-        texto.alignment = alinhamento;
-        texto.color = Color.white;
-        texto.horizontalOverflow = HorizontalWrapMode.Overflow; // texto não é cortado
-        texto.verticalOverflow = VerticalWrapMode.Overflow;
-
-        // Contorno preto para o texto ficar legível sobre qualquer fundo
-        Outline contorno = go.AddComponent<Outline>();
-        contorno.effectColor = new Color(0f, 0f, 0f, 0.8f);
-        contorno.effectDistance = new Vector2(2, -2);
-
-        return texto;
     }
 }

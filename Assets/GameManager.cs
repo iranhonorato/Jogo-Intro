@@ -10,7 +10,9 @@ using UnityEngine.SceneManagement;
 // - Observer: em vez de mexer na tela diretamente, o GameManager dispara eventos
 //   (TempoAlterado, PartidaTerminou). Quem quiser reagir (ex.: GameHUD) se inscreve neles.
 //   Assim as regras do jogo não dependem da interface.
-[RequireComponent(typeof(GameHUD))]
+// - Máquina de estados: a partida está sempre em um estado (Menu, Jogando ou Fim),
+//   e cada estado define o que o Update faz e quais ações são permitidas.
+[RequireComponent(typeof(GameHUD), typeof(MenuInicial))]
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
@@ -35,6 +37,7 @@ public class GameManager : MonoBehaviour
     public bool criarInimigosAutomaticamente = true;
 
     // Eventos (Observer). O float é a variação do tempo: positivo = bônus, negativo = penalidade.
+    public event Action PartidaIniciada;
     public event Action<float> TempoAlterado;
     public event Action<ResultadoPartida> PartidaTerminou;
 
@@ -43,7 +46,12 @@ public class GameManager : MonoBehaviour
     public float TempoRestante { get; private set; }
     public int ItensColetados { get; private set; }
     public int ItensTotal { get; private set; }
-    public bool JogoAtivo { get; private set; }
+    public EstadoJogo Estado { get; private set; } = EstadoJogo.Menu;
+    public bool JogoAtivo => Estado == EstadoJogo.Jogando;
+
+    // Ao reiniciar com R a cena é recarregada; este valor estático sobrevive à recarga
+    // e faz a nova partida começar direto, sem passar pelo menu.
+    private static bool pularMenu;
 
     // Garante que toda cena carregada tenha um GameManager, sem precisar colocá-lo à mão.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -71,7 +79,6 @@ public class GameManager : MonoBehaviour
         }
         Instance = this;
 
-        Time.timeScale = 1f; // a partida anterior pode ter terminado com o jogo congelado
         TempoRestante = tempoLimite;
     }
 
@@ -89,21 +96,46 @@ public class GameManager : MonoBehaviour
             EnemyFactory.CriarConjuntoPadrao();
         }
 
-        JogoAtivo = true;
+        if (pularMenu)
+        {
+            pularMenu = false;
+            IniciarPartida();
+        }
+        else
+        {
+            Time.timeScale = 0f; // tudo congelado enquanto o menu está aberto
+        }
     }
 
     void Update()
     {
-        if (JogoAtivo)
+        switch (Estado)
         {
-            TempoDecorrido += Time.deltaTime;
-            TempoRestante -= Time.deltaTime;
-            VerificarTempoEsgotado();
+            case EstadoJogo.Jogando:
+                TempoDecorrido += Time.deltaTime;
+                TempoRestante -= Time.deltaTime;
+                VerificarTempoEsgotado();
+                break;
+
+            case EstadoJogo.Fim:
+                Keyboard teclado = Keyboard.current;
+                if (teclado == null) break;
+                if (teclado.rKey.wasPressedThisFrame) RecarregarCena(pularMenu: true);
+                else if (teclado.mKey.wasPressedThisFrame) RecarregarCena(pularMenu: false);
+                break;
+
+            // EstadoJogo.Menu: nada acontece até o menu chamar IniciarPartida()
         }
-        else if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
-        {
-            Reiniciar();
-        }
+    }
+
+    // Chamado pelo botão "Iniciar Jogo" do menu (ou direto, ao reiniciar com R)
+    public void IniciarPartida()
+    {
+        if (Estado != EstadoJogo.Menu) return;
+
+        Estado = EstadoJogo.Jogando;
+        Time.timeScale = 1f; // descongela o jogo
+        PartidaIniciada?.Invoke();
     }
 
     // Chamado pelo Player ao coletar um item
@@ -145,7 +177,7 @@ public class GameManager : MonoBehaviour
 
     private void TerminarPartida(bool venceu)
     {
-        JogoAtivo = false;
+        Estado = EstadoJogo.Fim;
         Time.timeScale = 0f; // congela física e movimento de tudo
 
         ResultadoPartida resultado = new ResultadoPartida
@@ -178,8 +210,9 @@ public class GameManager : MonoBehaviour
         resultado.MelhorTempo = recorde;
     }
 
-    private void Reiniciar()
+    private static void RecarregarCena(bool pularMenu)
     {
+        GameManager.pularMenu = pularMenu;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
@@ -196,6 +229,8 @@ public class GameManager : MonoBehaviour
         }
     }
 }
+
+public enum EstadoJogo { Menu, Jogando, Fim }
 
 // Dados enviados no evento PartidaTerminou
 public class ResultadoPartida
