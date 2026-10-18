@@ -1,9 +1,10 @@
 using UnityEngine;
 
-// Padrão Factory: concentra a criação dos itens de coração, como a EnemyFactory faz com os inimigos.
+// Padrão Factory: concentra a criação dos itens (corações de vida e itens amarelos).
 public static class ItemFactory
 {
-    private const float EscalaCoracao = 0.6f;
+    private const float EscalaCoracao = 0.4f;
+    private static readonly Color CorItem = new Color(1f, 0.9f, 0.2f);
 
     public static CoracaoColetavel CriarCoracao(Vector2 posicao)
     {
@@ -14,13 +15,32 @@ public static class ItemFactory
         return go.AddComponent<CoracaoColetavel>();
     }
 
-    // 3 corações usados quando a cena não tem nenhum.
-    // Posições pensadas para a arena atual (x entre -7 e 7, y entre -4 e 4),
-    // perto de inimigos para que pegar um coração tenha algum risco.
-    public static void CriarCoracoesPadrao()
+    // Item amarelo coletável. Se houver um modelo (um item da cena), faz uma cópia dele,
+    // mantendo o mesmo visual; senão, monta um triângulo amarelo por código.
+    public static GameObject CriarItem(Vector2 posicao, GameObject modelo)
     {
-        CriarCoracao(new Vector2(-6.2f, -0.5f));
-        CriarCoracao(new Vector2(-1.5f, 3.4f));
-        CriarCoracao(new Vector2(5.8f, -1f));
+        if (modelo != null) return Object.Instantiate(modelo, posicao, Quaternion.identity);
+
+        GameObject go = new GameObject("Item", typeof(SpriteRenderer));
+        go.transform.position = posicao;
+
+        SpriteRenderer sr = go.GetComponent<SpriteRenderer>();
+        sr.sprite = SpriteFactory.Triangulo();
+        sr.color = CorItem;
+        sr.sortingOrder = OrdemDesenho.Cenario;
+        // Adicionado depois do sprite para o collider pegar o formato do triângulo
+        go.AddComponent<PolygonCollider2D>().isTrigger = true;
+
+        try
+        {
+            go.tag = GameManager.TagColetavel; // é pela tag que o jogador reconhece o item
+        }
+        catch (UnityException)
+        {
+            Debug.LogWarning($"A tag '{GameManager.TagColetavel}' não existe. Crie-a em Tags & Layers.");
+            Object.Destroy(go);
+            return null;
+        }
+        return go;
     }
 }

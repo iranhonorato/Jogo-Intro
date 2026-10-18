@@ -44,6 +44,10 @@ public class Enemy : MonoBehaviour
     public Vector2 Posicao => rb.position;
     public Transform Alvo { get; private set; }
 
+    // Quando definido (pelo ConstrutorFase), o inimigo segue os corredores do labirinto.
+    // Sem labirinto, anda em linha reta até o destino.
+    public Labirinto Labirinto { get; set; }
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -91,6 +95,9 @@ public class Enemy : MonoBehaviour
 
     public void MoverPara(Vector2 destino)
     {
+        // Todas as estratégias passam por aqui, então todas respeitam as paredes automaticamente
+        if (Labirinto != null) destino = Labirinto.ProximoPasso(rb.position, destino);
+
         rb.MovePosition(Vector2.MoveTowards(rb.position, destino, velocidade * Time.fixedDeltaTime));
     }
 

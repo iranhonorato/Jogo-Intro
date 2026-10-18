@@ -42,6 +42,9 @@ public class PlayerMovement : MonoBehaviour, IDanificavel
         // Sem isso, o Rigidbody "dorme" quando o jogador fica parado e
         // deixa de detectar um inimigo parado encostado nele
         rb.sleepMode = RigidbodySleepMode2D.NeverSleep;
+        rb.freezeRotation = true; // não gira ao bater nas quinas do labirinto
+        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous; // não "pula" paredes finas em alta velocidade
+        rb.interpolation = RigidbodyInterpolation2D.Interpolate; // movimento suave na tela entre os passos da física
         sr = GetComponent<SpriteRenderer>();
         if (sr != null) sr.sortingOrder = OrdemDesenho.Jogador; // por cima de itens e inimigos
     }
@@ -63,7 +66,17 @@ public class PlayerMovement : MonoBehaviour, IDanificavel
         // O empurrão perde força rapidamente (some em cerca de 0,25s)
         empurrao = Vector2.MoveTowards(empurrao, Vector2.zero, forcaEmpurrao * 4f * Time.fixedDeltaTime);
 
-        rb.MovePosition(rb.position + velocidade * Time.fixedDeltaTime);
+        // Define a velocidade e deixa a física mover o corpo: assim as paredes bloqueiam o jogador.
+        // (MovePosition é feito para corpos Kinematic; em um corpo Dynamic, como o jogador,
+        // ele força a posição e pode atravessar paredes.)
+        rb.linearVelocity = velocidade;
+    }
+
+    // Coloca o jogador em um ponto do mapa (usado pelo ConstrutorFase). Mantém o Z original.
+    public void Posicionar(Vector2 posicao)
+    {
+        transform.position = new Vector3(posicao.x, posicao.y, transform.position.z);
+        rb.position = posicao;
     }
 
     // Lê WASD ou setas. Normalizado para a diagonal não ser mais rápida que as retas.

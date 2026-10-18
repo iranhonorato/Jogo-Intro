@@ -23,7 +23,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Mecânica de Tempo")]
     [Tooltip("Tempo inicial (em segundos) para coletar todos os itens")]
-    public float tempoLimite = 30f;
+    public float tempoLimite = 45f; // o labirinto deixa os caminhos mais longos
 
 
     [Tooltip("Segundos ganhos ao coletar cada item")]
@@ -33,13 +33,9 @@ public class GameManager : MonoBehaviour
     [Tooltip("Abaixo desse tempo restante o contador fica vermelho")]
     public float tempoAlerta = 5f;
 
-    [Header("Inimigos")]
-    [Tooltip("Cria um conjunto de inimigos automaticamente se a cena não tiver nenhum")]
-    public bool criarInimigosAutomaticamente = true;
-
-    [Header("Itens")]
-    [Tooltip("Cria 3 corações de vida automaticamente se a cena não tiver nenhum")]
-    public bool criarCoracoesAutomaticamente = true;
+    [Header("Fase")]
+    [Tooltip("Monta o labirinto descrito em MapaFase: paredes, itens, corações, inimigos e posição do jogador")]
+    public bool construirLabirinto = true;
 
     // Eventos (Observer). O float é a variação do tempo: positivo = bônus, negativo = penalidade.
     public event Action PartidaIniciada;
@@ -106,17 +102,13 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
+        // A fase é montada antes de contar os itens, porque ela pode mover, copiar ou remover itens da cena
+        if (construirLabirinto)
+        {
+            new ConstrutorFase(MapaFase.Layout, MapaFase.Origem, MapaFase.TamanhoCelula).Construir();
+        }
+
         ItensTotal = ContarItens();
-
-        if (criarInimigosAutomaticamente && FindAnyObjectByType<Enemy>() == null)
-        {
-            EnemyFactory.CriarConjuntoPadrao();
-        }
-
-        if (criarCoracoesAutomaticamente && FindAnyObjectByType<CoracaoColetavel>() == null)
-        {
-            ItemFactory.CriarCoracoesPadrao();
-        }
 
         if (pularMenu)
         {

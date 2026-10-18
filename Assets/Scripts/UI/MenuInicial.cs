@@ -75,7 +75,7 @@ public class MenuInicial : MonoBehaviour
 
         return
             "<b>Objetivo</b>\n" +
-            "Colete todos os itens amarelos antes que o tempo acabe.\n\n" +
+            "Ande pelo labirinto e colete todos os itens amarelos antes que o tempo acabe.\n\n" +
             "<b>Controles</b>\n" +
             "Mova-se com W A S D ou com as setas.\n\n" +
             "<b>Tempo</b>\n" +
@@ -105,7 +105,7 @@ public class MenuInicial : MonoBehaviour
         titulo.text = "<b>JOGO INTRO</b>";
 
         Text subtitulo = UIFactory.CriarTexto(principal, "Subtitulo", new Vector2(0.5f, 0.5f), new Vector2(0, 140), TextAnchor.MiddleCenter, 40);
-        subtitulo.text = "Colete todos os itens antes que o tempo acabe!";
+        subtitulo.text = "Encontre todos os itens no labirinto antes que o tempo acabe!";
 
         botaoIniciar = UIFactory.CriarBotao(principal, "Iniciar Jogo", -20, IniciarJogo);
         UIFactory.CriarBotao(principal, "Regras", -140, MostrarRegras);

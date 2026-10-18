@@ -6,6 +6,7 @@ public static class SpriteFactory
 {
     private static Sprite quadrado;
     private static Sprite coracao;
+    private static Sprite triangulo;
 
     // Quadrado branco de 1x1 unidade (a cor vem do SpriteRenderer)
     public static Sprite Quadrado()
@@ -52,6 +53,34 @@ public static class SpriteFactory
             coracao = CriarSprite(textura);
         }
         return coracao;
+    }
+
+    // Triângulo branco apontando para cima, de 1x1 unidade
+    public static Sprite Triangulo()
+    {
+        if (triangulo == null)
+        {
+            const int tamanho = 64;
+            Texture2D textura = new Texture2D(tamanho, tamanho, TextureFormat.RGBA32, false);
+            textura.wrapMode = TextureWrapMode.Clamp;
+
+            Color32[] pixels = new Color32[tamanho * tamanho];
+            for (int y = 0; y < tamanho; y++)
+            {
+                // A largura diminui conforme sobe: base embaixo, ponta em cima
+                float meiaLargura = (1f - (y + 0.5f) / tamanho) * tamanho / 2f;
+                for (int x = 0; x < tamanho; x++)
+                {
+                    bool dentro = Mathf.Abs(x + 0.5f - tamanho / 2f) <= meiaLargura;
+                    pixels[y * tamanho + x] = dentro ? new Color32(255, 255, 255, 255) : new Color32(255, 255, 255, 0);
+                }
+            }
+
+            textura.SetPixels32(pixels);
+            textura.Apply();
+            triangulo = CriarSprite(textura);
+        }
+        return triangulo;
     }
 
     // Sprite com o pivô no centro e tamanho de 1 unidade no mundo
