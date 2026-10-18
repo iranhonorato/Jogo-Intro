@@ -1,15 +1,21 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class PlayerMovement : MonoBehaviour
+// Jogador: movimento, coleta de itens e reação a dano (empurrão + invencibilidade temporária).
+// Implementa IDanificavel para que os inimigos causem dano sem depender desta classe.
+[RequireComponent(typeof(Rigidbody2D))]
+public class PlayerMovement : MonoBehaviour, IDanificavel
 {
     public float speed = 5f;
 
     [Header("Dano")]
     [Tooltip("Tempo invencível depois de levar dano")]
     public float tempoInvencivel = 1.5f;
+    
     [Tooltip("Força do empurrão ao ser atingido por um inimigo")]
     public float forcaEmpurrao = 10f;
+
+    private const float IntervaloPiscar = 0.2f;
 
     private Rigidbody2D rb;
     private SpriteRenderer sr;
@@ -18,64 +24,70 @@ public class PlayerMovement : MonoBehaviour
 
     public bool Invencivel => Time.time < invencivelAte;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start() {
-
+    void Awake()
+    {
         rb = GetComponent<Rigidbody2D>();
-        rb.sleepMode = RigidbodySleepMode2D.NeverSleep; // para continuar detectando inimigos parado
+        // Sem isso, o Rigidbody "dorme" quando o jogador fica parado e
+        // deixa de detectar um inimigo parado encostado nele
+        rb.sleepMode = RigidbodySleepMode2D.NeverSleep;
         sr = GetComponent<SpriteRenderer>();
-
     }
 
-    void Update() {
-        // Pisca enquanto estiver invencível
+    void Update()
+    {
+        // Pisca (liga/desliga o sprite) após recber dano
         if (sr != null)
         {
-            sr.enabled = !Invencivel || Mathf.Repeat(Time.time, 0.2f) < 0.1f;
+            sr.enabled = !Invencivel || Mathf.Repeat(Time.time, IntervaloPiscar) < IntervaloPiscar / 2f;
         }
     }
 
-    // FixedUpdate is called at a fixed rate, used for physics
-    void FixedUpdate() {
-        Vector2 movement = Vector2.zero;
+    // FixedUpdate roda em intervalos fixos: é onde se mexe na física
+    void FixedUpdate()
+    {
+        Vector2 velocidade = LerDirecao() * speed + empurrao;
 
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard != null)
-        {
-            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) movement.x -= 1f;
-            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) movement.x += 1f;
-            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) movement.y -= 1f;
-            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) movement.y += 1f;
-        }
-
-        Vector2 velocidade = movement.normalized * speed + empurrao;
-
-        // O empurrão perde força rapidamente
+        // O empurrão perde força rapidamente (some em cerca de 0,25s)
         empurrao = Vector2.MoveTowards(empurrao, Vector2.zero, forcaEmpurrao * 4f * Time.fixedDeltaTime);
 
         rb.MovePosition(rb.position + velocidade * Time.fixedDeltaTime);
     }
 
-    // Chamado pelos inimigos. Retorna false se o jogador estiver invencível.
-    public bool LevarDano(Vector2 direcao)
+    // Lê WASD ou setas. Normalizado para a diagonal não ser mais rápida que as retas.
+    private static Vector2 LerDirecao()
     {
+        Keyboard teclado = Keyboard.current;
+        if (teclado == null) return Vector2.zero;
+
+        Vector2 direcao = Vector2.zero;
+        if (teclado.aKey.isPressed || teclado.leftArrowKey.isPressed) direcao.x -= 1f;
+        if (teclado.dKey.isPressed || teclado.rightArrowKey.isPressed) direcao.x += 1f;
+        if (teclado.sKey.isPressed || teclado.downArrowKey.isPressed) direcao.y -= 1f;
+        if (teclado.wKey.isPressed || teclado.upArrowKey.isPressed) direcao.y += 1f;
+        return direcao.normalized;
+    }
+
+    public bool ReceberDano(Vector2 direcao)
+    {
+        // Imediatamente após recber dano o personagem fica "Invencivel"
         if (Invencivel) return false;
 
         invencivelAte = Time.time + tempoInvencivel;
-        empurrao = direcao.normalized * forcaEmpurrao;
+
+        // Empurra o personagem caso ele colida com um inimigo
+        empurrao = (direcao == Vector2.zero ? Vector2.up : direcao.normalized) * forcaEmpurrao;
         return true;
     }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (other.CompareTag("Coletavel"))
-        {
-            Destroy(other.gameObject);
+        if (!other.CompareTag(GameManager.TagColetavel)) return;
 
-            if (GameManager.Instance != null)
-            {
-                GameManager.Instance.ItemColetado();
-            }
+        Destroy(other.gameObject);
+
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.ItemColetado();
         }
     }
 }
