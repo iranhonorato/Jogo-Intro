@@ -9,6 +9,9 @@ using UnityEngine.UI;
 // sem repetir o código de criação.
 public static class UIFactory
 {
+    // Fundo das telas cheias (menu, regras, fim de jogo): escuro e opaco, o jogo não aparece por trás
+    public static readonly Color CorFundoTela = new Color(0.04f, 0.08f, 0.1f, 1f);
+
     private static readonly Color CorBotao = new Color(0.18f, 0.45f, 0.48f);
     private static readonly Color CorBotaoDestaque = new Color(0.26f, 0.62f, 0.66f);
 

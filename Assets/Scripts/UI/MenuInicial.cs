@@ -7,8 +7,6 @@ using UnityEngine.UI;
 // Ele não controla as regras do jogo; só pede ao GameManager para começar a partida.
 public class MenuInicial : MonoBehaviour
 {
-    private static readonly Color CorFundo = new Color(0.05f, 0.12f, 0.14f, 0.92f);
-
     private GameManager jogo;
     private GameObject canvas;
     private GameObject telaPrincipal;
@@ -97,7 +95,7 @@ public class MenuInicial : MonoBehaviour
         canvas = raiz.gameObject;
 
         // Tela principal
-        telaPrincipal = UIFactory.CriarPainel(raiz, "TelaPrincipal", CorFundo);
+        telaPrincipal = UIFactory.CriarPainel(raiz, "TelaPrincipal", UIFactory.CorFundoTela);
         Transform principal = telaPrincipal.transform;
 
         Text titulo = UIFactory.CriarTexto(principal, "Titulo", new Vector2(0.5f, 0.5f), new Vector2(0, 260), TextAnchor.MiddleCenter, 120);
@@ -110,7 +108,7 @@ public class MenuInicial : MonoBehaviour
         UIFactory.CriarBotao(principal, "Regras", -140, MostrarRegras);
 
         // Tela de regras
-        telaRegras = UIFactory.CriarPainel(raiz, "TelaRegras", CorFundo);
+        telaRegras = UIFactory.CriarPainel(raiz, "TelaRegras", UIFactory.CorFundoTela);
         Transform regras = telaRegras.transform;
 
         Text tituloRegras = UIFactory.CriarTexto(regras, "Titulo", new Vector2(0.5f, 0.5f), new Vector2(0, 440), TextAnchor.MiddleCenter, 80);

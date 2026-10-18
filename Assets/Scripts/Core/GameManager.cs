@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -12,9 +13,9 @@ using UnityEngine.SceneManagement;
 //   se inscreve neles.
 //   Assim as regras do jogo não dependem da interface. O GameManager também é observador:
 //   escuta o evento Morreu da Vida do jogador para encerrar a partida.
-// - Máquina de estados: a partida está sempre em um estado (Menu, Jogando ou Fim),
+// - Máquina de estados: a partida está sempre em um estado (Menu, Jogando, Transicao ou Fim),
 //   e cada estado define o que o Update faz e quais ações são permitidas.
-[RequireComponent(typeof(GameHUD), typeof(MenuInicial))]
+[RequireComponent(typeof(GameHUD), typeof(MenuInicial), typeof(TransicaoFase))]
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
@@ -73,6 +74,7 @@ public class GameManager : MonoBehaviour
     private Porta porta;                // null se a fase não tiver porta
     private GameObject modeloItem;      // cópia desativada de um item, usada para criar itens nas próximas fases
     private bool concluirFasePendente;  // a troca de fase espera o próximo Update (fora dos eventos de colisão)
+    private ITransicaoFase transicao;   // animação da troca de fase (null = troca instantânea)
 
     // Garante que toda cena carregada tenha um GameManager, sem precisar colocá-lo à mão.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -101,6 +103,7 @@ public class GameManager : MonoBehaviour
         Instance = this;
 
         TempoRestante = tempoLimite;
+        transicao = GetComponent<ITransicaoFase>(); // depende só da interface, não da tela em si
 
         // Feito no Awake para que o HUD já encontre a vida no Start dele
         PlayerMovement jogador = FindAnyObjectByType<PlayerMovement>();
@@ -164,6 +167,7 @@ public class GameManager : MonoBehaviour
                 break;
 
             // EstadoJogo.Menu: nada acontece até o menu chamar IniciarPartida()
+            // EstadoJogo.Transicao: tudo pausado enquanto a corrotina TrocarDeFase roda
         }
     }
 
@@ -201,15 +205,24 @@ public class GameManager : MonoBehaviour
     // Vai para a próxima fase ou, se era a última, vence o jogo
     private void ConcluirFase()
     {
-        if (FaseAtual < TotalFases)
-        {
-            CarregarFase(indiceFase + 1);
-            AlterarTempo(bonusPorFase);
-        }
-        else
-        {
-            TerminarPartida(MotivoFim.Vitoria);
-        }
+        if (FaseAtual < TotalFases) StartCoroutine(TrocarDeFase());
+        else TerminarPartida(MotivoFim.Vitoria);
+    }
+
+    // Troca de fase em etapas: escurece a tela, troca o mapa sem o jogador ver e clareia.
+    // O jogo fica pausado durante toda a transição (o tempo não corre e ninguém se mexe).
+    private IEnumerator TrocarDeFase()
+    {
+        Estado = EstadoJogo.Transicao;
+        Time.timeScale = 0f;
+
+        if (transicao != null) yield return transicao.Escurecer();
+        CarregarFase(indiceFase + 1);
+        if (transicao != null) yield return transicao.Clarear();
+
+        Estado = EstadoJogo.Jogando;
+        Time.timeScale = 1f;
+        AlterarTempo(bonusPorFase); // só agora, para o "+30s" aparecer no HUD com a tela visível
     }
 
     // Troca o mapa sem recarregar a cena: jogador, vida, tempo e HUD continuam os mesmos
@@ -336,7 +349,7 @@ public class GameManager : MonoBehaviour
     }
 }
 
-public enum EstadoJogo { Menu, Jogando, Fim }
+public enum EstadoJogo { Menu, Jogando, Transicao, Fim }
 
 public enum MotivoFim { Vitoria, TempoEsgotado, SemVidas }
 

@@ -2,11 +2,11 @@ using UnityEngine;
 using UnityEngine.UI;
 
 // Interface do jogo (HUD), montada por código: cronômetro, fase e itens, corações, tempo restante,
-// mensagens (porta aberta, nova fase) e tela final.
+// mensagem de porta aberta e tela final.
 //
 // Padrão Observer: o HUD apenas observa o GameManager e a Vida do jogador. Ele lê o estado
 // a cada frame (valores que mudam sempre, como o cronômetro) e escuta eventos para o que
-// acontece de vez em quando (bônus/penalidade, vida alterada, porta aberta, nova fase e fim de partida).
+// acontece de vez em quando (bônus/penalidade, vida alterada, porta aberta e fim de partida).
 // Nunca altera as regras do jogo.
 public class GameHUD : MonoBehaviour
 {
@@ -44,7 +44,6 @@ public class GameHUD : MonoBehaviour
         jogo.PartidaIniciada += Mostrar;
         jogo.TempoAlterado += AoAlterarTempo;
         jogo.ItensConcluidos += AoConcluirItens;
-        jogo.FaseIniciada += AoIniciarFase;
         jogo.PartidaTerminou += AoTerminarPartida;
 
         if (vida != null)
@@ -64,7 +63,6 @@ public class GameHUD : MonoBehaviour
         jogo.PartidaIniciada -= Mostrar;
         jogo.TempoAlterado -= AoAlterarTempo;
         jogo.ItensConcluidos -= AoConcluirItens;
-        jogo.FaseIniciada -= AoIniciarFase;
         jogo.PartidaTerminou -= AoTerminarPartida;
         if (vida != null) vida.VidaAlterada -= AtualizarCoracoes;
     }
@@ -123,11 +121,6 @@ public class GameHUD : MonoBehaviour
     private void AoConcluirItens()
     {
         MostrarMensagem("A porta abriu! Encontre a saída.");
-    }
-
-    private void AoIniciarFase(int fase)
-    {
-        MostrarMensagem(fase == jogo.TotalFases ? $"Fase {fase}: a última!" : $"Fase {fase}");
     }
 
     // Mensagem temporária no topo da tela
@@ -189,7 +182,7 @@ public class GameHUD : MonoBehaviour
         textoMensagem.enabled = false;
 
         // Painel escuro que cobre a tela inteira no fim da partida
-        painelFinal = UIFactory.CriarPainel(raiz, "PainelFinal", new Color(0f, 0f, 0f, 0.75f));
+        painelFinal = UIFactory.CriarPainel(raiz, "PainelFinal", UIFactory.CorFundoTela);
         textoFinal = UIFactory.CriarTexto(painelFinal.transform, "TextoFinal", new Vector2(0.5f, 0.5f), Vector2.zero, TextAnchor.MiddleCenter, 64);
         painelFinal.SetActive(false);
     }
