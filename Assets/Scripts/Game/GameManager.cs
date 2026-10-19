@@ -224,7 +224,7 @@ public class GameManager : MonoBehaviour
         indiceFase = indice;
         ConstrutorFase construtor = new ConstrutorFase(MapaFase.Fases[indice], MapaFase.Origem, MapaFase.TamanhoCelula);
         ConfiguracaoVisual visual = Recursos.Visual;
-        if (visual != null) construtor.ComFundo(visual.FundoDaFase(indice), visual.brilhoFundoFases);
+        if (visual != null) construtor.ComVisual(visual.DaFase(indice), visual.brilhoFundoFases, visual.brilhoPiso);
         construtor.Construir();
         raizFase = construtor.Raiz;
         porta = construtor.Porta;

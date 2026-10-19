@@ -13,8 +13,9 @@ public class ConstrutorFase
     private readonly int linhas;
 
     private Labirinto labirinto;
-    private Sprite fundo;
+    private VisualFase visual;      // null = paredes brancas simples, sem fundo nem piso
     private float brilhoFundo = 1f;
+    private float brilhoPiso = 1f;
     private Transform pastaFase; // objeto pai que agrupa a fase na Hierarchy
 
     // Resultado da construção, usado pelo GameManager
@@ -36,11 +37,12 @@ public class ConstrutorFase
         }
     }
 
-    // Etapa opcional do Builder: imagem de fundo atrás do labirinto, escurecida
-    public ConstrutorFase ComFundo(Sprite sprite, float brilho)
+    // Etapa opcional do Builder: visual da fase (imagem ao redor, piso e textura das paredes)
+    public ConstrutorFase ComVisual(VisualFase visualFase, float brilhoDoFundo, float brilhoDoPiso)
     {
-        fundo = sprite;
-        brilhoFundo = brilho;
+        visual = visualFase;
+        brilhoFundo = brilhoDoFundo;
+        brilhoPiso = brilhoDoPiso;
         return this;
     }
 
@@ -49,8 +51,10 @@ public class ConstrutorFase
         pastaFase = new GameObject("Fase").transform;
 
         CriarFundo();
+        CriarPiso();
         CriarGrade();
         CriarParedes();
+        RevestirParedesDaCena();
         PosicionarJogador();
         PosicionarItens();
         CriarCoracoes();
@@ -66,6 +70,7 @@ public class ConstrutorFase
     private void CriarFundo()
     {
         Camera camera = Camera.main;
+        Sprite fundo = visual != null ? visual.fundo : null;
         if (fundo == null || camera == null) return;
 
         GameObject objeto = new GameObject("Fundo", typeof(SpriteRenderer));
@@ -226,6 +231,38 @@ public class ConstrutorFase
         inimigo.transform.SetParent(pastaFase, true);
     }
 
+    // Chão da arena: cobre a área do labirinto (e um pouco por baixo das paredes externas),
+    // escondendo o labirinto desenhado na imagem de fundo
+    private void CriarPiso()
+    {
+        if (visual == null || visual.piso == null) return;
+
+        const float folga = 0.3f; // passa por baixo das paredes externas, sem deixar fresta
+        Vector2 area = new Vector2(colunas, linhas) * celula;
+        CriarAreaRepetida("Piso", origem + area / 2f, area + Vector2.one * folga * 2f,
+                          visual.piso, ConfiguracaoVisual.Tinta(brilhoPiso), OrdemDesenho.Piso);
+    }
+
+    // As paredes externas que já estão na cena (brancas) ganham a textura das paredes da fase.
+    // Só o desenho muda: o original é escondido e os colliders continuam os mesmos.
+    // Parede da cena = collider sólido, sem Rigidbody (fixo) e que não faz parte da fase montada.
+    private void RevestirParedesDaCena()
+    {
+        if (visual == null || visual.parede == null) return;
+
+        foreach (BoxCollider2D colisor in Object.FindObjectsByType<BoxCollider2D>())
+        {
+            bool paredeDaCena = !colisor.isTrigger && colisor.attachedRigidbody == null
+                                && !colisor.transform.IsChildOf(pastaFase);
+            if (!paredeDaCena || !colisor.TryGetComponent(out SpriteRenderer original)) continue;
+
+            original.enabled = false;
+            Bounds area = colisor.bounds; // retângulo no mundo, já considerando escala e rotação
+            CriarAreaRepetida("Revestimento " + colisor.name, area.center, area.size,
+                              visual.parede, Color.white, OrdemDesenho.Cenario);
+        }
+    }
+
     // ---------- Ajudantes ----------
 
     // Converte (coluna, linha) da grade para o caractere do texto (onde a linha 0 é a de cima)
@@ -252,12 +289,24 @@ public class ConstrutorFase
 
     private void CriarParede(int x, int y, int largura, int altura)
     {
-        GameObject parede = new GameObject("Parede", typeof(SpriteRenderer));
-        parede.transform.SetParent(pastaFase, false);
-        parede.transform.position = origem + new Vector2(x + largura / 2f, y + altura / 2f) * celula;
-        parede.transform.localScale = new Vector3(largura * celula, altura * celula, 1f);
+        Vector2 centro = origem + new Vector2(x + largura / 2f, y + altura / 2f) * celula;
+        Vector2 tamanho = new Vector2(largura, altura) * celula;
 
-        SpriteRenderer sr = parede.GetComponent<SpriteRenderer>();
+        if (visual != null && visual.parede != null)
+        {
+            GameObject parede = CriarAreaRepetida("Parede", centro, tamanho, visual.parede, Color.white, OrdemDesenho.Cenario);
+            // Collider depois do sprite (senão ele nasce com tamanho zero), do tamanho da parede
+            parede.AddComponent<BoxCollider2D>().size = tamanho;
+            return;
+        }
+
+        // Sem textura: quadrado branco esticado até o tamanho da parede
+        GameObject simples = new GameObject("Parede", typeof(SpriteRenderer));
+        simples.transform.SetParent(pastaFase, false);
+        simples.transform.position = centro;
+        simples.transform.localScale = new Vector3(tamanho.x, tamanho.y, 1f);
+
+        SpriteRenderer sr = simples.GetComponent<SpriteRenderer>();
         sr.sprite = SpriteFactory.Quadrado();
         sr.color = Color.white;
         sr.sortingOrder = OrdemDesenho.Cenario;
@@ -265,8 +314,24 @@ public class ConstrutorFase
         // O collider precisa ser adicionado DEPOIS do sprite: ao ser criado, o BoxCollider2D
         // copia o tamanho do sprite, e sem sprite ele ficaria com tamanho zero (sem colisão).
         // O tamanho também é definido explicitamente: 1x1, multiplicado pela escala da parede.
-        BoxCollider2D colisor = parede.AddComponent<BoxCollider2D>();
-        colisor.size = Vector2.one;
+        simples.AddComponent<BoxCollider2D>().size = Vector2.one;
+    }
+
+    // Retângulo preenchido repetindo um sprite (modo Tiled), sem esticar a textura.
+    // A borda definida no sprite (se houver) fica só nas pontas: vira o contorno da área.
+    private GameObject CriarAreaRepetida(string nome, Vector2 centro, Vector2 tamanho, Sprite sprite, Color cor, int ordem)
+    {
+        GameObject objeto = new GameObject(nome, typeof(SpriteRenderer));
+        objeto.transform.SetParent(pastaFase, false);
+        objeto.transform.position = centro;
+
+        SpriteRenderer sr = objeto.GetComponent<SpriteRenderer>();
+        sr.sprite = sprite;
+        sr.drawMode = SpriteDrawMode.Tiled;
+        sr.size = tamanho;
+        sr.color = cor;
+        sr.sortingOrder = ordem;
+        return objeto;
     }
 
     // Redimensiona um objeto para que seu sprite tenha 'tamanho' unidades (no maior lado)

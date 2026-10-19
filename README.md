@@ -65,8 +65,17 @@ As imagens de fundo são definidas no asset `Assets/Resources/ConfiguracaoVisual
 | `fundoMenu` | Aventura da raposa na ilha mágica | Menu inicial e regras |
 | `fundoVitoria` | Raposa celebra vitória nas ruínas tropicais | Tela de vitória |
 | `fundoDerrota` | Raposa triste nas ruínas tropicais | Tela de derrota |
-| `fundosFases[0]` | Labirinto tropical em pixel art | Fase 1 |
-| `fundosFases[1]` | Ruínas tropicais: labirinto do crepúsculo | Fase 2 |
+| `fases[0].fundo` | Labirinto tropical em pixel art | Ao redor da arena na fase 1 |
+| `fases[1].fundo` | Ruínas tropicais: labirinto do crepúsculo | Ao redor da arena na fase 2 |
+
+Cada fase também tem um **piso** e uma **parede** próprios (`fases[i].piso` e `fases[i].parede`), texturas pequenas em `Assets/sprites/cenario/` que se repetem pela arena e ao longo de cada parede, inclusive a moldura externa da cena:
+
+| Fase | Piso | Parede |
+|---|---|---|
+| 1 | `PisoGrama` (grama recortada da imagem da fase) | `ParedeSebe` (sebe desenhada com a paleta da imagem) |
+| 2 | `PisoLadrilho` (um ladrilho recortado da imagem) | `ParedePedra` (bloco de pedra recortado da imagem) |
+
+Assim as paredes de verdade combinam com o cenário, e o piso cobre o labirinto desenhado na imagem de fundo (que não coincide com o do jogo). Uma faixa escura atrás do HUD mantém o texto legível sobre a moldura.
 
 As imagens são escurecidas para diminuir o contraste e manter o texto legível: `brilhoFundoTelas` (0,35) nas telas com texto e `brilhoFundoFases` (0,45) atrás do labirinto. Com esses valores, o texto branco tem contraste de pelo menos 7:1 nas telas e 4,8:1 nas fases.
 
@@ -116,7 +125,7 @@ Assets/Scripts/
 | `Core/` | `ITransicaoFase.cs` | Interface da animação de troca de fase |
 | `Core/` | `SpriteFactory.cs` | Sprites geométricos gerados por código (quadrado das paredes e porta) |
 | `Core/` | `Recursos.cs` | Carrega prefabs e sprites da pasta `Resources` pelo nome |
-| `Core/` | `ConfiguracaoVisual.cs` | Imagens de fundo e brilho (*ScriptableObject* editável no Inspector) |
+| `Core/` | `ConfiguracaoVisual.cs` | Imagens de fundo, piso e parede de cada fase e brilho (*ScriptableObject* editável no Inspector) |
 | `Core/` | `OrdemDesenho.cs` | Ordem de desenho dos sprites (o que fica por cima) |
 | `Core/` | `ExtensoesComponente.cs` | `ObterOuAdicionar<T>()`: pega um componente ou o adiciona se faltar |
 | `Game/` | `GameManager.cs` | Regras e estados da partida: cronômetro, contagem regressiva, itens, vidas, fases, vitória/derrota e recorde |

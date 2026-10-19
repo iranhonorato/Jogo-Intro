@@ -176,6 +176,16 @@ public class GameHUD : MonoBehaviour
         Transform raiz = UIFactory.CriarCanvas("HUD", 100);
         canvas = raiz.gameObject;
 
+        // Faixa escura atrás dos textos do topo: mantém o HUD legível sobre as paredes texturizadas
+        GameObject faixa = UIFactory.CriarPainel(raiz, "FaixaSuperior", new Color(0f, 0f, 0f, 0.5f));
+        RectTransform rtFaixa = faixa.GetComponent<RectTransform>();
+        rtFaixa.anchorMin = new Vector2(0f, 1f);
+        rtFaixa.anchorMax = Vector2.one;
+        rtFaixa.pivot = new Vector2(0.5f, 1f);
+        rtFaixa.sizeDelta = new Vector2(0f, 150f); // largura da tela inteira, 150 de altura
+        rtFaixa.anchoredPosition = Vector2.zero;
+        faixa.GetComponent<Image>().raycastTarget = false;
+
         textoCronometro = UIFactory.CriarTexto(raiz, "Cronometro", new Vector2(0f, 1f), new Vector2(30, -20), TextAnchor.UpperLeft, 48);
         textoItens = UIFactory.CriarTexto(raiz, "Itens", new Vector2(0.5f, 1f), new Vector2(0, -20), TextAnchor.UpperCenter, 48);
         textoRestante = UIFactory.CriarTexto(raiz, "TempoRestante", new Vector2(1f, 1f), new Vector2(-30, -90), TextAnchor.UpperRight, 48);
