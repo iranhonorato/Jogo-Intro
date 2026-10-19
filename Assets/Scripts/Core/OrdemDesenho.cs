@@ -2,6 +2,7 @@
 // Centralizar aqui evita números soltos espalhados pelos scripts e deixa a hierarquia visual clara.
 public static class OrdemDesenho
 {
+    public const int Fundo = -100;  // imagem de fundo da fase, atrás de tudo
     public const int Cenario = 0;   // paredes e itens amarelos (padrão da Unity)
     public const int Itens = 5;     // corações coletáveis
     public const int Inimigos = 10;

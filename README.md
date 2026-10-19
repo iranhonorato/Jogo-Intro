@@ -56,6 +56,20 @@ Itens, corações e inimigos são **prefabs** em `Assets/Resources/Prefabs/`, cr
 
 O jogador é a raposinha (`Assets/sprites/player/`); os sprites dos inimigos ficam em `Assets/sprites/enemy/`.
 
+### Imagens de fundo
+
+As imagens de fundo são definidas no asset `Assets/Resources/ConfiguracaoVisual.asset` (basta selecioná-lo e editar no Inspector):
+
+| Campo | Imagem (`Assets/sprites/utils/`) | Onde aparece |
+|---|---|---|
+| `fundoMenu` | Aventura da raposa na ilha mágica | Menu inicial e regras |
+| `fundoVitoria` | Raposa celebra vitória nas ruínas tropicais | Tela de vitória |
+| `fundoDerrota` | Raposa triste nas ruínas tropicais | Tela de derrota |
+| `fundosFases[0]` | Labirinto tropical em pixel art | Fase 1 |
+| `fundosFases[1]` | Ruínas tropicais: labirinto do crepúsculo | Fase 2 |
+
+As imagens são escurecidas para diminuir o contraste e manter o texto legível: `brilhoFundoTelas` (0,35) nas telas com texto e `brilhoFundoFases` (0,45) atrás do labirinto. Com esses valores, o texto branco tem contraste de pelo menos 7:1 nas telas e 4,8:1 nas fases.
+
 Eles ficam em uma pasta `Resources` porque o `GameManager` e as fábricas são criados por código e não recebem referências pelo Inspector; assim o código encontra cada prefab pelo nome.
 
 ### Editando o labirinto
@@ -102,6 +116,7 @@ Assets/Scripts/
 | `Core/` | `ITransicaoFase.cs` | Interface da animação de troca de fase |
 | `Core/` | `SpriteFactory.cs` | Sprites geométricos gerados por código (quadrado das paredes e porta) |
 | `Core/` | `Recursos.cs` | Carrega prefabs e sprites da pasta `Resources` pelo nome |
+| `Core/` | `ConfiguracaoVisual.cs` | Imagens de fundo e brilho (*ScriptableObject* editável no Inspector) |
 | `Core/` | `OrdemDesenho.cs` | Ordem de desenho dos sprites (o que fica por cima) |
 | `Core/` | `ExtensoesComponente.cs` | `ObterOuAdicionar<T>()`: pega um componente ou o adiciona se faltar |
 | `Game/` | `GameManager.cs` | Regras e estados da partida: cronômetro, contagem regressiva, itens, vidas, fases, vitória/derrota e recorde |

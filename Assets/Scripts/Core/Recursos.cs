@@ -11,6 +11,18 @@ public static class Recursos
 
     public static Sprite Sprite(string nome) => Carregar<Sprite>("Sprites/" + nome);
 
+    // Imagens de fundo (Assets/Resources/ConfiguracaoVisual.asset). Carregada uma vez e reaproveitada.
+    public static ConfiguracaoVisual Visual
+    {
+        get
+        {
+            if (visual == null) visual = Carregar<ConfiguracaoVisual>("ConfiguracaoVisual");
+            return visual;
+        }
+    }
+
+    private static ConfiguracaoVisual visual;
+
     private static T Carregar<T>(string caminho) where T : Object
     {
         T recurso = Resources.Load<T>(caminho);

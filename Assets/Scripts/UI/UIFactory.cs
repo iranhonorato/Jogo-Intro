@@ -109,6 +109,27 @@ public static class UIFactory
         return imagem;
     }
 
+    // Imagem que cobre todo o pai sem distorcer (corta as bordas se a proporção for diferente),
+    // escurecida para o texto por cima ficar legível. Fica atrás dos outros elementos do pai.
+    public static Image CriarImagemDeFundo(Transform pai, Sprite sprite, float brilho)
+    {
+        GameObject go = new GameObject("ImagemDeFundo", typeof(RectTransform), typeof(Image), typeof(AspectRatioFitter));
+        RectTransform rt = go.GetComponent<RectTransform>();
+        rt.SetParent(pai, false);
+        rt.SetAsFirstSibling();
+
+        Image imagem = go.GetComponent<Image>();
+        imagem.sprite = sprite;
+        imagem.color = ConfiguracaoVisual.Tinta(brilho);
+        imagem.raycastTarget = false; // só decorativa: não bloqueia cliques
+
+        AspectRatioFitter ajuste = go.GetComponent<AspectRatioFitter>();
+        ajuste.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent; // cobre o pai inteiro
+        ajuste.aspectRatio = sprite.rect.width / sprite.rect.height;
+
+        return imagem;
+    }
+
     // Botão centralizado horizontalmente; posicaoY é a distância vertical em relação ao centro
     public static Button CriarBotao(Transform pai, string rotulo, float posicaoY, UnityAction aoClicar)
     {

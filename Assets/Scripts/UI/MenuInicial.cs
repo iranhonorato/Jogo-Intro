@@ -89,6 +89,14 @@ public class MenuInicial : MonoBehaviour
 
     // ---------- Montagem da interface ----------
 
+    // Imagem de abertura atrás do menu, escurecida (se estiver configurada)
+    private static void CriarFundo(Transform tela)
+    {
+        ConfiguracaoVisual visual = Recursos.Visual;
+        if (visual == null || visual.fundoMenu == null) return;
+        UIFactory.CriarImagemDeFundo(tela, visual.fundoMenu, visual.brilhoFundoTelas);
+    }
+
     private void CriarInterface()
     {
         Transform raiz = UIFactory.CriarCanvas("MenuInicial", 200); // acima do HUD
@@ -97,6 +105,7 @@ public class MenuInicial : MonoBehaviour
         // Tela principal
         telaPrincipal = UIFactory.CriarPainel(raiz, "TelaPrincipal", UIFactory.CorFundoTela);
         Transform principal = telaPrincipal.transform;
+        CriarFundo(principal);
 
         Text titulo = UIFactory.CriarTexto(principal, "Titulo", new Vector2(0.5f, 0.5f), new Vector2(0, 260), TextAnchor.MiddleCenter, 120);
         titulo.text = "<b>Pac-Fox</b>";
@@ -110,6 +119,7 @@ public class MenuInicial : MonoBehaviour
         // Tela de regras
         telaRegras = UIFactory.CriarPainel(raiz, "TelaRegras", UIFactory.CorFundoTela);
         Transform regras = telaRegras.transform;
+        CriarFundo(regras);
 
         Text tituloRegras = UIFactory.CriarTexto(regras, "Titulo", new Vector2(0.5f, 0.5f), new Vector2(0, 440), TextAnchor.MiddleCenter, 80);
         tituloRegras.text = "<b>REGRAS</b>";

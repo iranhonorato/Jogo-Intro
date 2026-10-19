@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72388c4357fa4096be60833284ffd7a4, type: 3}
+  m_Name: ConfiguracaoVisual
+  m_EditorClassIdentifier: Assembly-CSharp::ConfiguracaoVisual
+  fundoMenu: {fileID: 21300000, guid: 75f3e941d81744198ab31b1735d4d010, type: 3}
+  fundoVitoria: {fileID: 21300000, guid: 425a9156955d4f4f81a11293eb21a015, type: 3}
+  fundoDerrota: {fileID: 21300000, guid: c8f08c9147c54f5790227cdcbf44bdfb, type: 3}
+  fundosFases:
+  - {fileID: 21300000, guid: 6286db7858534a79818d163583136a66, type: 3}
+  - {fileID: 21300000, guid: b01c86db36d54280ab6d1d264c099f43, type: 3}
+  brilhoFundoTelas: 0.35
+  brilhoFundoFases: 0.45

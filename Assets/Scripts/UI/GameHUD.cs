@@ -29,6 +29,8 @@ public class GameHUD : MonoBehaviour
     private Text textoMensagem;
     private Text textoFinal;
     private GameObject painelFinal;
+    private GameObject fundoVitoria; // null se não houver imagem configurada
+    private GameObject fundoDerrota;
 
     // Último bônus/penalidade, exibido por alguns instantes ao lado do tempo restante
     private float ultimaVariacao;
@@ -155,6 +157,8 @@ public class GameHUD : MonoBehaviour
 
         textoFinal.text = texto +
             "\n<size=36>Pressione R para jogar novamente\nPressione M para voltar ao menu</size>";
+        if (fundoVitoria != null) fundoVitoria.SetActive(r.Venceu);
+        if (fundoDerrota != null) fundoDerrota.SetActive(!r.Venceu);
         painelFinal.SetActive(true);
     }
 
@@ -183,8 +187,25 @@ public class GameHUD : MonoBehaviour
 
         // Painel escuro que cobre a tela inteira no fim da partida
         painelFinal = UIFactory.CriarPainel(raiz, "PainelFinal", UIFactory.CorFundoTela);
-        textoFinal = UIFactory.CriarTexto(painelFinal.transform, "TextoFinal", new Vector2(0.5f, 0.5f), Vector2.zero, TextAnchor.MiddleCenter, 64);
+        // Um pouco abaixo do centro: as imagens de vitória e de derrota já trazem o título escrito no topo
+        textoFinal = UIFactory.CriarTexto(painelFinal.transform, "TextoFinal", new Vector2(0.5f, 0.5f), new Vector2(0, -90), TextAnchor.MiddleCenter, 64);
+
+        ConfiguracaoVisual visual = Recursos.Visual;
+        if (visual != null)
+        {
+            fundoVitoria = CriarFundoFinal(visual.fundoVitoria, visual.brilhoFundoTelas);
+            fundoDerrota = CriarFundoFinal(visual.fundoDerrota, visual.brilhoFundoTelas);
+        }
         painelFinal.SetActive(false);
+    }
+
+    // Imagem atrás do texto da tela final, escondida até a partida terminar (null se não houver imagem)
+    private GameObject CriarFundoFinal(Sprite sprite, float brilho)
+    {
+        if (sprite == null) return null;
+        GameObject fundo = UIFactory.CriarImagemDeFundo(painelFinal.transform, sprite, brilho).gameObject;
+        fundo.SetActive(false);
+        return fundo;
     }
 
     // Uma fileira de corações no canto superior direito, alinhada pela direita

@@ -13,6 +13,8 @@ public class ConstrutorFase
     private readonly int linhas;
 
     private Labirinto labirinto;
+    private Sprite fundo;
+    private float brilhoFundo = 1f;
     private Transform pastaFase; // objeto pai que agrupa a fase na Hierarchy
 
     // Resultado da construção, usado pelo GameManager
@@ -34,10 +36,19 @@ public class ConstrutorFase
         }
     }
 
+    // Etapa opcional do Builder: imagem de fundo atrás do labirinto, escurecida
+    public ConstrutorFase ComFundo(Sprite sprite, float brilho)
+    {
+        fundo = sprite;
+        brilhoFundo = brilho;
+        return this;
+    }
+
     public Labirinto Construir()
     {
         pastaFase = new GameObject("Fase").transform;
 
+        CriarFundo();
         CriarGrade();
         CriarParedes();
         PosicionarJogador();
@@ -50,6 +61,28 @@ public class ConstrutorFase
     }
 
     // ---------- Passos da construção ----------
+
+    // Cobre toda a área vista pela câmera, sem distorcer a imagem (corta as bordas se precisar)
+    private void CriarFundo()
+    {
+        Camera camera = Camera.main;
+        if (fundo == null || camera == null) return;
+
+        GameObject objeto = new GameObject("Fundo", typeof(SpriteRenderer));
+        objeto.transform.SetParent(pastaFase, false);
+        objeto.transform.position = new Vector3(camera.transform.position.x, camera.transform.position.y, 0f);
+
+        SpriteRenderer sr = objeto.GetComponent<SpriteRenderer>();
+        sr.sprite = fundo;
+        sr.color = ConfiguracaoVisual.Tinta(brilhoFundo);
+        sr.sortingOrder = OrdemDesenho.Fundo;
+
+        float alturaVisivel = camera.orthographicSize * 2f;
+        float larguraVisivel = alturaVisivel * camera.aspect;
+        Vector2 tamanhoImagem = fundo.bounds.size;
+        float escala = Mathf.Max(larguraVisivel / tamanhoImagem.x, alturaVisivel / tamanhoImagem.y);
+        objeto.transform.localScale = new Vector3(escala, escala, 1f);
+    }
 
     private void CriarGrade()
     {
