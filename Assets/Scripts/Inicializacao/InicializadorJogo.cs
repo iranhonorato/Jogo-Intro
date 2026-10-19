@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 // Monta, em toda cena carregada, as peças que o jogo precisa e que não estão salvas na cena:
-// - o GameManager e as telas (HUD, menu inicial e transição de fase);
+// - o GameManager, as telas (HUD, menu inicial e transição de fase) e o áudio;
 // - o componente de dano do jogador (que traz junto a Vida).
 //
 // É o único lugar que junta as partes ("composition root"): ele conhece todo mundo,
@@ -31,5 +31,6 @@ public static class InicializadorJogo
         objeto.ObterOuAdicionar<GameHUD>();
         objeto.ObterOuAdicionar<MenuInicial>();
         objeto.ObterOuAdicionar<TransicaoFase>();
+        objeto.ObterOuAdicionar<AudioJogo>();
     }
 }

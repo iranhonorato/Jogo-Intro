@@ -48,6 +48,7 @@ public class GameManager : MonoBehaviour
     // Eventos (Observer). O float é a variação do tempo: positivo = bônus, negativo = penalidade.
     public event Action PartidaIniciada;
     public event Action<float> TempoAlterado;
+    public event Action ItemFoiColetado;        // um item amarelo foi coletado
     public event Action ItensConcluidos;        // todos os itens da fase coletados: a porta abre
     public event Action<int> FaseIniciada;      // número da nova fase (começando em 1)
     public event Action<ResultadoPartida> PartidaTerminou;
@@ -172,6 +173,7 @@ public class GameManager : MonoBehaviour
         if (!JogoAtivo) return;
 
         ItensColetados++;
+        ItemFoiColetado?.Invoke();
         AlterarTempo(bonusPorItem);
 
         if (!TodosItensColetados) return;

@@ -11,6 +11,8 @@ public static class Recursos
 
     public static Sprite Sprite(string nome) => Carregar<Sprite>("Sprites/" + nome);
 
+    public static AudioClip Audio(string nome) => Carregar<AudioClip>("Audio/" + nome);
+
     // Imagens de fundo (Assets/Resources/ConfiguracaoVisual.asset). Carregada uma vez e reaproveitada.
     public static ConfiguracaoVisual Visual
     {

@@ -81,6 +81,17 @@ As imagens são escurecidas para diminuir o contraste e manter o texto legível:
 
 Eles ficam em uma pasta `Resources` porque o `GameManager` e as fábricas são criados por código e não recebem referências pelo Inspector; assim o código encontra cada prefab pelo nome.
 
+### Áudio
+
+| Som | Arquivo (`Assets/Resources/Audio/`) | Quando toca |
+|---|---|---|
+| Música de fundo | `MusicaTropical.wav` | Em loop desde a abertura do jogo (menu) e durante as fases |
+| Item | `SomItem.wav` | Ao coletar um item amarelo |
+| Coração | `SomCura.wav` | Ao recuperar um coração |
+| Dano | `SomDano.wav` | Ao perder um coração |
+
+A música (loop de 32 s, chiptune tropical a 120 BPM) e os efeitos foram compostos e gerados por código pelo script `Ferramentas/gerar_audio.py`; para gerá-los de novo: `python Ferramentas/gerar_audio.py`. No navegador (WebGL), o som só começa depois do primeiro clique ou tecla, por regra dos próprios navegadores.
+
 ### Editando o labirinto
 
 As fases são desenhos em texto no arquivo `Assets/Scripts/Level/MapaFase.cs`. Cada caractere é uma célula de 0,5 x 0,5 unidade:
@@ -113,6 +124,7 @@ Assets/Scripts/
 ├── Items/          os itens coletáveis
 ├── Level/          o labirinto: desenho, montagem, porta e busca de caminho
 ├── UI/             as telas e a interface
+├── Audio/          música de fundo e efeitos sonoros
 └── Editor/         ferramentas do editor (não vão para o jogo final)
 ```
 
@@ -147,6 +159,7 @@ Assets/Scripts/
 | `UI/` | `GameHUD.cs` | Interface durante a partida (tempo, itens, corações, tela final) |
 | `UI/` | `TransicaoFase.cs` | Animação de troca de fase (escurecer, cartão "Fase N", clarear) |
 | `UI/` | `UIFactory.cs` | Criação dos elementos de interface (canvas, textos, painéis, botões) |
+| `Audio/` | `AudioJogo.cs` | Música de fundo e efeitos sonoros (observa os eventos do jogo) |
 | `Editor/` | `PreviewFase.cs` | Pré-visualização do labirinto na aba Scene |
 
 ## Design patterns
@@ -172,10 +185,11 @@ O `GameManager` não mexe na tela: ele dispara eventos e quem se interessa reage
 |---|---|
 | `PartidaIniciada` | Menu se esconde, HUD aparece |
 | `TempoAlterado` | HUD mostra "+3s" ou "-5s" |
+| `ItemFoiColetado` | Áudio toca o som de item |
 | `ItensConcluidos` | Porta abre, HUD mostra "A porta abriu!" |
 | `FaseIniciada` | Tela de transição mostra "Fase N" |
 | `PartidaTerminou` | HUD mostra a tela de fim de jogo |
-| `Vida.VidaAlterada` | HUD redesenha os corações |
+| `Vida.VidaAlterada` | HUD redesenha os corações; áudio toca o som de dano ou de cura |
 | `Vida.Morreu` | `GameManager` encerra a partida |
 
 Assim as regras do jogo não dependem da interface, que pode ser trocada sem mexer nelas.
@@ -214,3 +228,4 @@ O `ConstrutorFase` (Builder) lê o desenho do `MapaFase` e decide **o que** vai 
 - **Sprites dos personagens** (raposinha, arara azul, jacaré, leão e tubarão, em `Assets/sprites/`): os sprites foram reaproveitados do Projeto Pygame de 2024.2 de Ciência da Computação.
 - **Paredes e itens**: formas básicas (quadrado e triângulo) do pacote 2D da Unity.
 - **Coração e porta**: desenhados por código no próprio projeto (`Assets/Resources/Sprites/Coracao.png` e `SpriteFactory`).
+- **Música e efeitos sonoros**: compostos e gerados por código para este projeto (`Ferramentas/gerar_audio.py`).
