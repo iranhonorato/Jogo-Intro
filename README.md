@@ -28,7 +28,7 @@ Ao abrir o jogo aparece o **menu inicial**, com as opções **Iniciar Jogo** e *
 | **Parado** | Obstáculo imóvel |
 | **Patrulha** | Vai e volta em uma direção pré-definida |
 | **Perseguição** | Segue o jogador o tempo todo |
-| **Sentinela** | Patrulha até o jogador chegar perto, fica laranja e passa a persegui-lo. Volta a patrulhar quando o jogador se afasta |
+| **Sentinela** | Patrulha até o jogador chegar perto, muda de cor e passa a persegui-lo. Volta a patrulhar quando o jogador se afasta |
 
 Os inimigos seguem os corredores do labirinto: o perseguidor e a sentinela encontram o caminho até o jogador sem atravessar paredes.
 
@@ -44,15 +44,17 @@ O `GameManager`, o menu, a interface e o labirinto são criados automaticamente 
 
 Itens, corações e inimigos são **prefabs** em `Assets/Resources/Prefabs/`, criados pelas fábricas ao montar a fase. Para mudar velocidade, raios de detecção, direção da patrulha ou cor de um tipo de inimigo, basta abrir o prefab dele e editar no Inspector:
 
-| Símbolo | Prefab |
-|---|---|
-| `I` | `Item` |
-| `C` | `Coracao` |
-| `E` | `InimigoParado` |
-| `H` | `InimigoPatrulhaHorizontal` |
-| `V` | `InimigoPatrulhaVertical` |
-| `S` | `InimigoSentinela` |
-| `F` | `InimigoPerseguidor` |
+| Símbolo | Prefab | Sprite |
+|---|---|---|
+| `I` | `Item` | triângulo amarelo |
+| `C` | `Coracao` | coração |
+| `E` | `InimigoParado` | jacaré |
+| `H` | `InimigoPatrulhaHorizontal` | arara azul |
+| `V` | `InimigoPatrulhaVertical` | arara azul |
+| `S` | `InimigoSentinela` | tubarão destemido |
+| `F` | `InimigoPerseguidor` | leão |
+
+O jogador é a raposinha (`Assets/sprites/player/`); os sprites dos inimigos ficam em `Assets/sprites/enemy/`.
 
 Eles ficam em uma pasta `Resources` porque o `GameManager` e as fábricas são criados por código e não recebem referências pelo Inspector; assim o código encontra cada prefab pelo nome.
 
@@ -182,3 +184,9 @@ O `ConstrutorFase` (Builder) lê o desenho do `MapaFase` e decide **o que** vai 
 - **Responsabilidade única:** o jogador é dividido em `PlayerMovement` (movimento), `DanoJogador` (dano) e `Vida` (corações), e cada item cuida da própria coleta.
 - **Composition root:** o `InicializadorJogo` é o único que cria e liga as peças (`GameManager`, telas e componentes do jogador). Assim o `GameManager` não depende da interface.
 - **Busca de caminho (BFS):** os inimigos pedem ao `Labirinto` o próximo passo pelos corredores, para não atravessar paredes.
+
+## Créditos
+
+- **Sprites dos personagens** (raposinha, arara azul, jacaré, leão e tubarão, em `Assets/sprites/`): os sprites foram reaproveitados do Projeto Pygame de 2024.2 de Ciência da Computação.
+- **Paredes e itens**: formas básicas (quadrado e triângulo) do pacote 2D da Unity.
+- **Coração e porta**: desenhados por código no próprio projeto (`Assets/Resources/Sprites/Coracao.png` e `SpriteFactory`).

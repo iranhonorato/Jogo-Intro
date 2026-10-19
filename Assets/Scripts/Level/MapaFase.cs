@@ -25,7 +25,7 @@ public static class MapaFase
     public static readonly Vector2 Origem = new Vector2(-7f, -4.1f);
 
     // Tamanho (em unidades) dos objetos que já existem na cena e são redimensionados pela fase
-    public const float TamanhoJogador = 0.45f;
+    public const float TamanhoJogador = 0.55f;
     public const float TamanhoItem = 0.35f;
 
     // Fase 1: salas regulares, corredor central longo e a porta no canto inferior direito

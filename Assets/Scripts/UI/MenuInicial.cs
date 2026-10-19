@@ -84,7 +84,7 @@ public class MenuInicial : MonoBehaviour
             "<b>Inimigos</b>\n" +
             $"Encostar em um inimigo tira 1 coração{penalidade} e empurra você.\n" +
             "Alguns ficam parados, outros patrulham, e outros perseguem você.\n" +
-            "Os que ficam <color=#FF9900>laranja</color> viram você e começaram a perseguir!";
+            "Quando um inimigo <color=#FF6666>muda de cor</color>, é porque viu você e começou a perseguir!";
     }
 
     // ---------- Montagem da interface ----------
@@ -99,7 +99,7 @@ public class MenuInicial : MonoBehaviour
         Transform principal = telaPrincipal.transform;
 
         Text titulo = UIFactory.CriarTexto(principal, "Titulo", new Vector2(0.5f, 0.5f), new Vector2(0, 260), TextAnchor.MiddleCenter, 120);
-        titulo.text = "<b>JOGO INTRO</b>";
+        titulo.text = "<b>Pac-Fox</b>";
 
         Text subtitulo = UIFactory.CriarTexto(principal, "Subtitulo", new Vector2(0.5f, 0.5f), new Vector2(0, 140), TextAnchor.MiddleCenter, 40);
         subtitulo.text = "Colete os itens, abra a porta e escape dos labirintos!";

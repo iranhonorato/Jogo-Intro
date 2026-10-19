@@ -231,7 +231,7 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Radius: 0.50000006
+  m_Radius: 0.42
 --- !u!50 &364251612
 Rigidbody2D:
   serializedVersion: 5
@@ -308,8 +308,8 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -2413806693520163455, guid: a86470a33a6bf42c4b3595704624658b, type: 3}
-  m_Color: {r: 0.69272226, g: 0.20819002, b: 0.22986244, a: 1}
+  m_Sprite: {fileID: 21300000, guid: 81f51011553b42d5ae60d75e87c5c64e, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -327,9 +327,9 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 364251610}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.037736855, y: 0.037014324, z: 0.7034559, w: 0.70877045}
-  m_LocalPosition: {x: -4.4191, y: 2.4234004, z: -0.35}
-  m_LocalScale: {x: 1.0053903, y: 1.0092129, z: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -4.9289, y: 3.2102, z: -0.4333}
+  m_LocalScale: {x: 0.4666911, y: 0.3907671, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -347,8 +347,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
   speed: 5
-  tempoInvencivel: 1.5
-  forcaEmpurrao: 10
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0

@@ -110,7 +110,7 @@ public static class PreviewFase
                     case 'V':
                     case 'S':
                     case 'F':
-                        Marcador(centro, 0.2f, CorInimigo, simbolo.ToString());
+                        Marcador(centro, 0.25f, CorInimigo, simbolo.ToString()); // inimigos têm 0,5 de tamanho
                         break;
                 }
             }
