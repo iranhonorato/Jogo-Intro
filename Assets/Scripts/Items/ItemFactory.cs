@@ -39,7 +39,7 @@ public static class ItemFactory
 
         try
         {
-            go.tag = GameManager.TagColetavel; // é pela tag que o jogador reconhece o item
+            go.tag = GameManager.TagColetavel; // é pela tag que o GameManager encontra e conta os itens
         }
         catch (UnityException)
         {

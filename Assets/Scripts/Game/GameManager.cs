@@ -5,17 +5,18 @@ using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 // Regras da partida: cronômetro, contagem regressiva, itens, vidas, fases, vitória/derrota e recorde.
+// É o orquestrador do jogo: conhece o jogador, a fase e os itens, mas NÃO conhece as telas.
+// Quem cria o GameManager e as telas é o InicializadorJogo.
 //
 // Padrões de projeto:
 // - Singleton: existe um único GameManager, acessível de qualquer script por GameManager.Instance.
 // - Observer: em vez de mexer na tela diretamente, o GameManager dispara eventos
 //   (TempoAlterado, ItensConcluidos, PartidaTerminou...). Quem quiser reagir (GameHUD, Porta)
-//   se inscreve neles.
-//   Assim as regras do jogo não dependem da interface. O GameManager também é observador:
-//   escuta o evento Morreu da Vida do jogador para encerrar a partida.
+//   se inscreve neles. O GameManager também é observador: escuta o evento Morreu da Vida
+//   do jogador para encerrar a partida.
 // - Máquina de estados: a partida está sempre em um estado (Menu, Jogando, Transicao ou Fim),
 //   e cada estado define o que o Update faz e quais ações são permitidas.
-[RequireComponent(typeof(GameHUD), typeof(MenuInicial), typeof(TransicaoFase))]
+// - A animação de troca de fase é acessada só pela interface ITransicaoFase.
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
@@ -76,22 +77,6 @@ public class GameManager : MonoBehaviour
     private bool concluirFasePendente;  // a troca de fase espera o próximo Update (fora dos eventos de colisão)
     private ITransicaoFase transicao;   // animação da troca de fase (null = troca instantânea)
 
-    // Garante que toda cena carregada tenha um GameManager, sem precisar colocá-lo à mão.
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-    private static void Registrar()
-    {
-        SceneManager.sceneLoaded -= AoCarregarCena; // evita inscrição dupla
-        SceneManager.sceneLoaded += AoCarregarCena;
-    }
-
-    private static void AoCarregarCena(Scene cena, LoadSceneMode modo)
-    {
-        if (FindAnyObjectByType<GameManager>() == null)
-        {
-            new GameObject("GameManager").AddComponent<GameManager>();
-        }
-    }
-
     void Awake()
     {
         // Singleton: se já existe outro, este é descartado
@@ -103,13 +88,12 @@ public class GameManager : MonoBehaviour
         Instance = this;
 
         TempoRestante = tempoLimite;
-        transicao = GetComponent<ITransicaoFase>(); // depende só da interface, não da tela em si
 
         // Feito no Awake para que o HUD já encontre a vida no Start dele
         PlayerMovement jogador = FindAnyObjectByType<PlayerMovement>();
         if (jogador != null)
         {
-            VidaJogador = jogador.Vida;
+            VidaJogador = jogador.gameObject.ObterOuAdicionar<Vida>();
             VidaJogador.Morreu += AoJogadorMorrer;
         }
     }
@@ -122,6 +106,9 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
+        // No Start, e não no Awake: o InicializadorJogo adiciona as telas logo depois do GameManager
+        transicao = GetComponent<ITransicaoFase>(); // depende só da interface, não da tela em si
+
         if (construirLabirinto)
         {
             GuardarModeloItem();
@@ -129,7 +116,7 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            ItensTotal = ContarItens();
+            PrepararItens();
         }
 
         if (pularMenu)
@@ -244,7 +231,7 @@ public class GameManager : MonoBehaviour
 
         // A fase é montada antes de contar os itens, porque ela pode mover, copiar ou remover itens
         ItensColetados = 0;
-        ItensTotal = ContarItens();
+        PrepararItens();
 
         FaseIniciada?.Invoke(FaseAtual);
     }
@@ -332,7 +319,14 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
-    private static int ContarItens() => ItensDaCena().Length;
+    // Conta os itens da fase e garante que cada um saiba ser coletado
+    // (os itens da cena vêm do prefab, que não tem o componente ItemColetavel)
+    private void PrepararItens()
+    {
+        GameObject[] itens = ItensDaCena();
+        foreach (GameObject item in itens) item.ObterOuAdicionar<ItemColetavel>();
+        ItensTotal = itens.Length;
+    }
 
     // Itens ativos na cena (objetos desativados não entram)
     private static GameObject[] ItensDaCena()
@@ -347,23 +341,4 @@ public class GameManager : MonoBehaviour
             return new GameObject[0];
         }
     }
-}
-
-public enum EstadoJogo { Menu, Jogando, Transicao, Fim }
-
-public enum MotivoFim { Vitoria, TempoEsgotado, SemVidas }
-
-// Dados enviados no evento PartidaTerminou
-public class ResultadoPartida
-{
-    public MotivoFim Motivo;
-    public bool Venceu => Motivo == MotivoFim.Vitoria;
-    public float TempoFinal;
-    public float TempoRestante;
-    public int ItensColetados;
-    public int ItensTotal;
-    public int Fase;
-    public int TotalFases;
-    public float MelhorTempo;
-    public bool NovoRecorde;
 }

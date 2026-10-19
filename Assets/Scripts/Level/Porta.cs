@@ -17,7 +17,7 @@ public class Porta : MonoBehaviour
 
     void Awake()
     {
-        if (!TryGetComponent(out sr)) sr = gameObject.AddComponent<SpriteRenderer>();
+        sr = gameObject.ObterOuAdicionar<SpriteRenderer>();
         if (sr.sprite == null) sr.sprite = SpriteFactory.Porta();
         sr.color = CorTrancada;
         sr.sortingOrder = OrdemDesenho.Itens;

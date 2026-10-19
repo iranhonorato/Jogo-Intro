@@ -59,149 +59,86 @@ O labirinto só é montado ao dar Play, mas a aba **Scene** mostra uma pré-visu
 
 ## Estrutura do código
 
-Os scripts ficam em `Assets/Scripts/`, organizados **por funcionalidade**: cada pasta reúne tudo de uma parte do jogo.
+Os scripts ficam em `Assets/Scripts/`, organizados **por funcionalidade**: cada pasta reúne tudo de uma parte do jogo. Os prefabs ficam em `Assets/Prefabs/` e a cena em `Assets/Scenes/`. (`Assets/Welcome/` é do template 2D da Unity e não faz parte do jogo.)
 
 ```
 Assets/Scripts/
-├── Core/       regras do jogo e contratos usados por várias partes
-├── Editor/     ferramentas do editor (não vão para o jogo final)
-├── Player/     o jogador
-├── Enemies/    os inimigos
-├── Items/      os itens coletáveis
-├── Level/      o labirinto: desenho, montagem e busca de caminho
-└── UI/         as telas e a interface
+├── Core/           base compartilhada: interfaces, Vida e utilitários (não depende de nenhuma outra pasta)
+├── Game/           regras e estados da partida (GameManager)
+├── Inicializacao/  monta o GameManager, as telas e o jogador ao carregar a cena
+├── Player/         movimento e reação a dano do jogador
+├── Enemies/        os inimigos
+│   └── Comportamentos/   as estratégias de movimento (uma por arquivo)
+├── Items/          os itens coletáveis
+├── Level/          o labirinto: desenho, montagem, porta e busca de caminho
+├── UI/             as telas e a interface
+└── Editor/         ferramentas do editor (não vão para o jogo final)
 ```
+
+**Direção das dependências:** `Core` é a base e não conhece ninguém. `Game` (o `GameManager`) orquestra jogador, fase e itens, mas **não conhece as telas**. A `UI` só observa o `Game`. O `Inicializacao` é o único que conhece todo mundo, porque é ele que junta as peças, e nenhuma outra pasta depende dele.
 
 | Pasta | Arquivo | Responsabilidade |
 |---|---|---|
-| `Core/` | `GameManager.cs` | Regras e estados da partida: cronômetro, contagem regressiva, itens, vidas, vitória/derrota e recorde |
 | `Core/` | `Vida.cs` | Pontos de vida (corações) de um objeto |
 | `Core/` | `IDanificavel.cs` | Interface para objetos que podem levar dano |
 | `Core/` | `ITransicaoFase.cs` | Interface da animação de troca de fase |
-| `Core/` | `SpriteFactory.cs` | Sprites gerados por código (quadrado e coração) |
-| `Player/` | `PlayerMovement.cs` | Movimento do jogador, coleta de itens e reação a dano |
+| `Core/` | `SpriteFactory.cs` | Sprites gerados por código (quadrado, coração, triângulo, porta) |
+| `Core/` | `OrdemDesenho.cs` | Ordem de desenho dos sprites (o que fica por cima) |
+| `Core/` | `ExtensoesComponente.cs` | `ObterOuAdicionar<T>()`: pega um componente ou o adiciona se faltar |
+| `Game/` | `GameManager.cs` | Regras e estados da partida: cronômetro, contagem regressiva, itens, vidas, fases, vitória/derrota e recorde |
+| `Game/` | `EstadoJogo.cs`, `MotivoFim.cs`, `ResultadoPartida.cs` | Tipos usados pelo `GameManager` (estados, motivo do fim e dados da tela final) |
+| `Inicializacao/` | `InicializadorJogo.cs` | Cria o `GameManager` e as telas e completa o jogador com o componente de dano |
+| `Player/` | `PlayerMovement.cs` | Movimento do jogador (teclado, física, empurrão) |
+| `Player/` | `DanoJogador.cs` | Reação a dano: perde coração, é empurrado e fica invencível piscando |
 | `Enemies/` | `Enemy.cs` | Configuração do inimigo e dano ao jogador |
-| `Enemies/` | `ComportamentosInimigo.cs` | As formas de movimento dos inimigos |
 | `Enemies/` | `EnemyFactory.cs` | Criação de inimigos |
+| `Enemies/Comportamentos/` | `IComportamentoInimigo.cs` e `Comportamento*.cs` | As estratégias de movimento: parado, patrulha, perseguição e sentinela |
+| `Items/` | `ItemColetavel.cs` | Item amarelo: avisa o `GameManager` ao ser coletado |
 | `Items/` | `CoracaoColetavel.cs` | Item que recupera 1 coração |
 | `Items/` | `ItemFactory.cs` | Criação dos corações e itens |
 | `Level/` | `MapaFase.cs` | Desenho das fases em texto |
 | `Level/` | `ConstrutorFase.cs` | Monta a fase a partir do desenho (paredes, jogador, itens, corações, porta e inimigos) |
 | `Level/` | `Porta.cs` | Porta de saída: abre quando os itens acabam e leva à próxima fase |
 | `Level/` | `Labirinto.cs` | Grade do labirinto e busca de caminho (BFS) para os inimigos |
-| `Editor/` | `PreviewFase.cs` | Pré-visualização do labirinto na aba Scene |
 | `UI/` | `MenuInicial.cs` | Menu inicial (Iniciar Jogo / Regras) |
 | `UI/` | `GameHUD.cs` | Interface durante a partida (tempo, itens, corações, tela final) |
 | `UI/` | `TransicaoFase.cs` | Animação de troca de fase (escurecer, cartão "Fase N", clarear) |
 | `UI/` | `UIFactory.cs` | Criação dos elementos de interface (canvas, textos, painéis, botões) |
+| `Editor/` | `PreviewFase.cs` | Pré-visualização do labirinto na aba Scene |
 
 ## Design patterns
 
-```mermaid
-classDiagram
-    class GameManager {
-        +Instance$
-        +Estado
-        +PartidaIniciada event
-        +TempoAlterado event
-        +PartidaTerminou event
-        +IniciarPartida()
-        +ItemColetado()
-        +PerderTempo()
-    }
-    class GameHUD
-    class MenuInicial
-    class UIFactory {
-        +CriarTexto()$
-        +CriarBotao()$
-    }
-    class Enemy
-    class EnemyFactory {
-        +Criar()$
-    }
-    class IComportamentoInimigo {
-        <<interface>>
-        +Atualizar(Enemy)
-    }
-    class IDanificavel {
-        <<interface>>
-        +ReceberDano(direcao) bool
-    }
-    class PlayerMovement
-    class Vida {
-        +VidaAlterada event
-        +Morreu event
-        +Perder()
-        +Curar() bool
-    }
-    class CoracaoColetavel
-    class MapaFase
-    class ConstrutorFase {
-        +Construir() Labirinto
-    }
-    class Labirinto {
-        +ProximoPasso(posicao, destino)
-    }
-    class ItemFactory {
-        +CriarCoracao()$
-        +CriarItem()$
-    }
+| Padrão | Onde | Para que serve |
+|---|---|---|
+| **Singleton** | `GameManager` | Um único gerenciador da partida, acessível por `GameManager.Instance` |
+| **Observer** | `GameManager`, `Vida` | Avisam por eventos o que aconteceu; telas e porta só reagem |
+| **Máquina de estados** | `GameManager` | Define o que pode acontecer em cada momento da partida |
+| **Strategy** | `Enemies/Comportamentos/` | Cada forma de o inimigo se mover é uma classe trocável |
+| **Null Object** | `ComportamentoParado` | Um comportamento que não faz nada, para evitar checagens de `null` |
+| **Factory** | `EnemyFactory`, `ItemFactory`, `UIFactory`, `SpriteFactory` | Concentram em um lugar o "como criar" cada tipo de objeto |
+| **Builder** | `ConstrutorFase` | Monta a fase passo a passo a partir do desenho em texto |
+| **Interfaces** | `IDanificavel`, `ITransicaoFase` | Quem usa depende do contrato, não da classe concreta |
 
-    GameHUD ..> GameManager : observa eventos
-    MenuInicial ..> GameManager : observa eventos
-    GameHUD ..> UIFactory : cria interface
-    MenuInicial ..> UIFactory : cria interface
-    GameManager ..> ConstrutorFase : monta a fase
-    ConstrutorFase ..> MapaFase : lê o desenho
-    ConstrutorFase ..> Labirinto : cria
-    ConstrutorFase ..> EnemyFactory : pede inimigos
-    ConstrutorFase ..> ItemFactory : pede itens
-    ConstrutorFase ..> Porta : cria
-    Porta ..> GameManager : observa ItensConcluidos
-    Enemy ..> Labirinto : pede o caminho
-    EnemyFactory ..> Enemy : cria
-    Enemy o-- IComportamentoInimigo : estratégia
-    IComportamentoInimigo <|.. ComportamentoParado
-    IComportamentoInimigo <|.. ComportamentoPatrulha
-    IComportamentoInimigo <|.. ComportamentoPerseguicao
-    IComportamentoInimigo <|.. ComportamentoSentinela
-    ComportamentoSentinela o-- ComportamentoPatrulha
-    ComportamentoSentinela o-- ComportamentoPerseguicao
-    Enemy ..> IDanificavel : causa dano
-    IDanificavel <|.. PlayerMovement
-    PlayerMovement *-- Vida
-    GameHUD ..> Vida : observa VidaAlterada
-    GameManager ..> Vida : observa Morreu
-    ItemFactory ..> CoracaoColetavel : cria
-    CoracaoColetavel ..> Vida : cura
-```
+### Singleton
+Existe um único `GameManager`. Jogador, inimigos, itens e porta o avisam do que aconteceu (item coletado, dano, porta) por `GameManager.Instance`, sem precisar guardar referências.
 
-### Singleton (`GameManager`)
+### Observer
+O `GameManager` não mexe na tela: ele dispara eventos e quem se interessa reage.
 
-Existe um único `GameManager`, acessível de qualquer script por `GameManager.Instance`. Assim o jogador e os inimigos avisam o jogo sobre itens coletados e dano sem precisar guardar uma referência. Se um segundo `GameManager` aparecer, ele é destruído no `Awake`.
+| Evento | Quem reage |
+|---|---|
+| `PartidaIniciada` | Menu se esconde, HUD aparece |
+| `TempoAlterado` | HUD mostra "+3s" ou "-5s" |
+| `ItensConcluidos` | Porta abre, HUD mostra "A porta abriu!" |
+| `FaseIniciada` | Tela de transição mostra "Fase N" |
+| `PartidaTerminou` | HUD mostra a tela de fim de jogo |
+| `Vida.VidaAlterada` | HUD redesenha os corações |
+| `Vida.Morreu` | `GameManager` encerra a partida |
 
-### Observer (`GameManager` e `Vida` → interface)
+Assim as regras do jogo não dependem da interface, que pode ser trocada sem mexer nelas.
 
-O `GameManager` não altera a tela diretamente. Ele dispara eventos:
-
-- `PartidaIniciada`: o jogador saiu do menu e a partida começou;
-- `TempoAlterado(float variacao)`: um bônus (positivo) ou uma penalidade (negativa);
-- `ItensConcluidos`: todos os itens da fase foram coletados;
-- `FaseIniciada(int fase)`: o jogador entrou em uma nova fase;
-- `PartidaTerminou(ResultadoPartida resultado)`: o fim da partida, com os dados para a tela final.
-
-O `MenuInicial`, o `GameHUD` e a `Porta` se inscrevem nesses eventos: o menu se esconde quando a partida começa, o HUD aparece e mostra mensagens ("A porta abriu!", "Fase 2"), e a porta abre quando os itens acabam. As regras do jogo não dependem da interface, que pode ser trocada sem mexer no `GameManager`.
-
-O componente `Vida` segue a mesma ideia, com dois eventos:
-
-- `VidaAlterada(atual, maxima)`: o `GameHUD` redesenha os corações (cheios ou vazios);
-- `Morreu`: o `GameManager` encerra a partida com o motivo "sem vidas".
-
-Nem o jogador nem os inimigos sabem que o HUD ou o `GameManager` existem: o inimigo só causa dano, o jogador só perde um coração, e cada interessado reage ao evento.
-
-### Máquina de estados (`GameManager`)
-
-A partida está sempre em um de quatro estados (`EstadoJogo`):
+### Máquina de estados
+A partida está sempre em um destes estados (`EstadoJogo`). Fora de `Jogando`, o jogo fica congelado.
 
 ```mermaid
 stateDiagram-v2
@@ -210,54 +147,21 @@ stateDiagram-v2
     Jogando --> Transicao : porta (há próxima fase)
     Transicao --> Jogando : mapa novo pronto
     Jogando --> Fim : porta da última fase, tempo esgotado ou sem vidas
-    Fim --> Jogando : R (recarrega a cena e pula o menu)
-    Fim --> Menu : M (recarrega a cena)
+    Fim --> Jogando : R
+    Fim --> Menu : M
 ```
 
-Cada estado define o que o `Update` faz e quais ações valem. Por exemplo, coletar itens ou perder tempo só tem efeito no estado `Jogando`. Nos estados `Menu`, `Transicao` e `Fim` o jogo fica congelado (`Time.timeScale = 0`).
+### Strategy e Null Object
+O `Enemy` não sabe *como* se mover: ele recebe uma estratégia (`IComportamentoInimigo`) conforme a opção do Inspector e a executa a cada frame. A `ComportamentoSentinela` reaproveita as estratégias de patrulha e perseguição. A `ComportamentoParado` é um Null Object: não faz nada, mas evita tratar "sem comportamento" como caso especial. Para criar um comportamento novo, basta escrever outra classe.
 
-### Strategy (comportamentos dos inimigos)
+### Factory e Builder
+O `ConstrutorFase` (Builder) lê o desenho do `MapaFase` e decide **o que** vai em cada lugar; as fábricas sabem **como** criar cada objeto (inimigos, itens, telas e sprites). Por isso, mudar o labirinto não exige mexer em código, só no desenho.
 
-Cada forma de movimento é uma classe que implementa `IComportamentoInimigo`. O `Enemy` não sabe *como* se mover: ele escolhe a estratégia conforme a opção do Inspector e chama `Atualizar()` a cada frame de física.
+### Interfaces
+- **`IDanificavel`**: o inimigo causa dano a qualquer objeto que implemente a interface (no jogador, o `DanoJogador`), sem conhecer o jogador.
+- **`ITransicaoFase`**: o `GameManager` decide *quando* escurecer, trocar o mapa e clarear; *como* a tela é animada fica com a `TransicaoFase`. Sem ela, a troca de fase continua funcionando, só que instantânea.
 
-A `ComportamentoSentinela` é **composta** pelas estratégias de patrulha e perseguição e só decide qual delas usar. Para criar um comportamento novo, basta escrever uma classe nova e registrá-la em `Enemy.CriarEstrategia()`, sem alterar as existentes.
-
-### Null Object (`ComportamentoParado`)
-
-O inimigo parado também tem uma estratégia: uma que não faz nada. Com isso o `Enemy` sempre tem uma estratégia válida e não precisa checar `null`.
-
-### Factory (`EnemyFactory`)
-
-A montagem de um inimigo (criar o objeto, posicionar, escalar e configurar o comportamento) fica em um só lugar. O `ConstrutorFase` só diz qual inimigo quer e onde, sem conhecer os detalhes.
-
-### Factory (`ItemFactory`)
-
-Como a `EnemyFactory`, concentra a criação dos corações de vida e dos itens amarelos.
-
-### Factory (`UIFactory` e `SpriteFactory`)
-
-O menu e o HUD montam a interface por código usando a mesma fábrica: `CriarCanvas`, `CriarPainel`, `CriarTexto`, `CriarImagem` e `CriarBotao`. Isso evita repetir o código de criação e garante o mesmo visual (fonte, contorno, cores dos botões) nas duas telas.
-
-A `SpriteFactory` gera os sprites do jogo por código (o quadrado dos inimigos e o coração usado no HUD e nos itens). Cada sprite é criado uma única vez e reaproveitado, então o jogo não depende de arquivos de imagem.
-
-### Builder (`ConstrutorFase`)
-
-A fase é descrita como dados (o texto do `MapaFase`) e montada passo a passo pelo `ConstrutorFase`: grade, paredes, jogador, itens, corações e inimigos. O Builder decide **o que** vai em cada lugar e delega **como** criar cada objeto às fábricas. Assim, mudar o labirinto não exige mexer em código, só no desenho.
-
-Ao montar as paredes, células vizinhas são agrupadas em retângulos maiores. Isso gera menos objetos e evita que o jogador "enganche" nas emendas entre paredes.
-
-### Busca em largura (`Labirinto`)
-
-Os inimigos são movidos por código (kinematic), então a física não os impede de atravessar paredes. Por isso o `Enemy.MoverPara()` pede ao `Labirinto` o próximo ponto do caminho, calculado com uma **busca em largura (BFS)** na grade. Como todas as estratégias de movimento passam por `MoverPara()`, todas respeitam as paredes sem nenhuma alteração nelas. Antes de cada curva, o inimigo se alinha com o centro da célula, para não cortar os cantos das paredes.
-
-### Interface `ITransicaoFase` (troca de fase)
-
-A troca de fase é uma corrotina do `GameManager` com três etapas: **escurecer → trocar o mapa → clarear**. O `GameManager` decide *quando* cada etapa acontece, mas a animação em si fica com quem implementa `ITransicaoFase` (a `TransicaoFase`, que faz o fade e mostra o cartão "Fase N"). Como o `GameManager` depende só da interface, a animação pode ser trocada sem mexer nas regras; sem nenhuma implementação, a troca continua funcionando, só que instantânea.
-
-### Responsabilidade única (`Vida`)
-
-A vida não fica dentro do `PlayerMovement`: é um componente próprio, que só cuida de perder, curar e avisar. O `CoracaoColetavel` cura qualquer objeto que tenha `Vida`, sem conhecer o jogador.
-
-### Interface `IDanificavel`
-
-Os inimigos causam dano a qualquer objeto que implemente `IDanificavel`, e não diretamente ao `PlayerMovement`. Isso reduz o acoplamento e permite que outros objetos levem dano no futuro sem alterar o `Enemy`.
+### Outras decisões
+- **Responsabilidade única:** o jogador é dividido em `PlayerMovement` (movimento), `DanoJogador` (dano) e `Vida` (corações), e cada item cuida da própria coleta.
+- **Composition root:** o `InicializadorJogo` é o único que cria e liga as peças (`GameManager`, telas e componentes do jogador). Assim o `GameManager` não depende da interface.
+- **Busca de caminho (BFS):** os inimigos pedem ao `Labirinto` o próximo passo pelos corredores, para não atravessar paredes.

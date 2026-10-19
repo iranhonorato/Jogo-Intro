@@ -14,7 +14,7 @@ public class CoracaoColetavel : MonoBehaviour
     void Awake()
     {
         // Permite criar o item a partir de um objeto vazio: adiciona sprite e collider se faltarem
-        if (!TryGetComponent(out SpriteRenderer sr)) sr = gameObject.AddComponent<SpriteRenderer>();
+        SpriteRenderer sr = gameObject.ObterOuAdicionar<SpriteRenderer>();
         if (sr.sprite == null)
         {
             sr.sprite = SpriteFactory.Coracao();

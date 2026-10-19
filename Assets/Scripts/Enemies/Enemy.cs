@@ -130,7 +130,7 @@ public class Enemy : MonoBehaviour
     // Permite criar o inimigo a partir de um objeto vazio: adiciona sprite e cor se faltarem
     private void GarantirVisual()
     {
-        if (!TryGetComponent(out sr)) sr = gameObject.AddComponent<SpriteRenderer>();
+        sr = gameObject.ObterOuAdicionar<SpriteRenderer>();
 
         if (sr.sprite == null)
         {
