@@ -1,24 +1,36 @@
+using System.Collections.Generic;
 using UnityEngine;
 
-// Padrão Factory: concentra em um só lugar o "como montar um inimigo".
-// Quem precisa de inimigos (ex.: ConstrutorFase) só diz o que quer, sem conhecer os detalhes.
+// Padrão Factory: cria os inimigos a partir dos prefabs em Assets/Resources/Prefabs.
+// Cada símbolo do mapa corresponde a um prefab, já configurado com comportamento,
+// velocidade, direção, raios e cor (ajustáveis no Inspector, sem mexer em código).
 public static class EnemyFactory
 {
-    private const float Escala = 0.4f; // cabe com folga nos corredores do labirinto (1 unidade)
-
-    public static Enemy Criar(string nome, Vector2 posicao, Enemy.Comportamento comportamento,
-                              float velocidade, Vector2 direcaoPatrulha = default, float distanciaPatrulha = 0f)
+    private static readonly Dictionary<char, string> PrefabPorSimbolo = new Dictionary<char, string>
     {
-        GameObject go = new GameObject(nome);
-        go.transform.position = posicao;
-        go.transform.localScale = Vector3.one * Escala;
+        { 'E', "InimigoParado" },
+        { 'H', "InimigoPatrulhaHorizontal" },
+        { 'V', "InimigoPatrulhaVertical" },
+        { 'S', "InimigoSentinela" },
+        { 'F', "InimigoPerseguidor" },
+    };
 
-        // O Awake do Enemy roda aqui dentro; os campos abaixo são lidos depois, no Start
-        Enemy inimigo = go.AddComponent<Enemy>();
-        inimigo.comportamento = comportamento;
-        inimigo.velocidade = velocidade;
-        inimigo.direcaoPatrulha = direcaoPatrulha;
-        inimigo.distanciaPatrulha = distanciaPatrulha;
-        return inimigo;
+    public static IEnumerable<char> Simbolos => PrefabPorSimbolo.Keys;
+
+    // Configuração do prefab (sem criar nada), para saber como posicionar o inimigo antes de criá-lo
+    public static Enemy Modelo(char simbolo)
+    {
+        GameObject prefab = Recursos.Prefab(PrefabPorSimbolo[simbolo]);
+        return prefab != null ? prefab.GetComponent<Enemy>() : null;
+    }
+
+    public static Enemy Criar(char simbolo, Vector2 posicao)
+    {
+        GameObject prefab = Recursos.Prefab(PrefabPorSimbolo[simbolo]);
+        if (prefab == null) return null;
+
+        GameObject inimigo = Object.Instantiate(prefab, posicao, Quaternion.identity);
+        inimigo.name = prefab.name; // sem o "(Clone)" no nome
+        return inimigo.GetComponent<Enemy>();
     }
 }

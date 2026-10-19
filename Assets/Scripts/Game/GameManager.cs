@@ -73,7 +73,6 @@ public class GameManager : MonoBehaviour
     private int indiceFase;
     private Transform raizFase;         // objetos da fase atual (destruídos ao trocar de fase)
     private Porta porta;                // null se a fase não tiver porta
-    private GameObject modeloItem;      // cópia desativada de um item, usada para criar itens nas próximas fases
     private bool concluirFasePendente;  // a troca de fase espera o próximo Update (fora dos eventos de colisão)
     private ITransicaoFase transicao;   // animação da troca de fase (null = troca instantânea)
 
@@ -111,7 +110,6 @@ public class GameManager : MonoBehaviour
 
         if (construirLabirinto)
         {
-            GuardarModeloItem();
             CarregarFase(0);
         }
         else
@@ -225,7 +223,7 @@ public class GameManager : MonoBehaviour
 
         indiceFase = indice;
         ConstrutorFase construtor = new ConstrutorFase(MapaFase.Fases[indice], MapaFase.Origem, MapaFase.TamanhoCelula);
-        construtor.Construir(modeloItem);
+        construtor.Construir();
         raizFase = construtor.Raiz;
         porta = construtor.Porta;
 
@@ -234,18 +232,6 @@ public class GameManager : MonoBehaviour
         PrepararItens();
 
         FaseIniciada?.Invoke(FaseAtual);
-    }
-
-    // Guarda uma cópia desativada de um item da cena para servir de molde nas próximas fases
-    // (quando o jogador chega lá, os itens originais da cena já foram coletados)
-    private void GuardarModeloItem()
-    {
-        GameObject[] itens = ItensDaCena();
-        if (itens.Length == 0) return;
-
-        modeloItem = Instantiate(itens[0], transform);
-        modeloItem.name = "ModeloItem";
-        modeloItem.SetActive(false); // desativado: invisível, sem colisão e fora da contagem
     }
 
     // Chamado pelos inimigos ao atingir o jogador

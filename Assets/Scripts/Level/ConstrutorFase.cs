@@ -14,7 +14,6 @@ public class ConstrutorFase
 
     private Labirinto labirinto;
     private Transform pastaFase; // objeto pai que agrupa a fase na Hierarchy
-    private GameObject modeloItem;
 
     // Resultado da construção, usado pelo GameManager
     public Transform Raiz => pastaFase;   // destruída ao trocar de fase
@@ -35,11 +34,8 @@ public class ConstrutorFase
         }
     }
 
-    // modeloItem: item usado como molde quando faltam itens na cena (ex.: na fase 2,
-    // os itens originais da cena já foram coletados). Pode ser null.
-    public Labirinto Construir(GameObject modeloItem)
+    public Labirinto Construir()
     {
-        this.modeloItem = modeloItem;
         pastaFase = new GameObject("Fase").transform;
 
         CriarGrade();
@@ -107,12 +103,11 @@ public class ConstrutorFase
     }
 
     // Reaproveita os itens que já estão na cena (movendo-os para as posições do mapa).
-    // Se faltar item, copia o modelo; se sobrar, o excedente é removido.
+    // Se faltar item, cria a partir do prefab; se sobrar, o excedente é removido.
     private void PosicionarItens()
     {
         GameObject[] existentes = ItensDaCena();
         List<Vector2Int> posicoes = new List<Vector2Int>(Posicoes('I'));
-        GameObject modelo = modeloItem != null ? modeloItem : (existentes.Length > 0 ? existentes[0] : null);
 
         for (int i = 0; i < posicoes.Count; i++)
         {
@@ -125,7 +120,7 @@ public class ConstrutorFase
             }
             else
             {
-                item = ItemFactory.CriarItem(posicao, modelo);
+                item = ItemFactory.CriarItem(posicao);
                 if (item == null) continue;
                 item.transform.SetParent(pastaFase, true);
             }
@@ -144,7 +139,8 @@ public class ConstrutorFase
     {
         foreach (Vector2Int c in Posicoes('C'))
         {
-            ItemFactory.CriarCoracao(labirinto.CentroDe(c)).transform.SetParent(pastaFase, true);
+            GameObject coracao = ItemFactory.CriarCoracao(labirinto.CentroDe(c));
+            if (coracao != null) coracao.transform.SetParent(pastaFase, true);
         }
     }
 
@@ -163,38 +159,31 @@ public class ConstrutorFase
 
     private void CriarInimigos()
     {
-        foreach (Vector2Int c in Posicoes('E'))
-            Configurar(EnemyFactory.Criar("Inimigo Parado", labirinto.CentroDe(c), Enemy.Comportamento.Parado, 0f));
-
-        foreach (Vector2Int c in Posicoes('F'))
-            Configurar(EnemyFactory.Criar("Inimigo Perseguidor", labirinto.CentroDe(c), Enemy.Comportamento.Perseguicao, 1.5f));
-
-        foreach (Vector2Int c in Posicoes('H'))
-            CriarPatrulha("Inimigo Patrulha Horizontal", c, Vector2Int.right, Enemy.Comportamento.Patrulha, 3f);
-
-        foreach (Vector2Int c in Posicoes('V'))
-            CriarPatrulha("Inimigo Patrulha Vertical", c, Vector2Int.up, Enemy.Comportamento.Patrulha, 2.5f);
-
-        foreach (Vector2Int c in Posicoes('S'))
+        foreach (char simbolo in EnemyFactory.Simbolos)
         {
-            Enemy sentinela = CriarPatrulha("Inimigo Sentinela", c, Vector2Int.right, Enemy.Comportamento.Sentinela, 2.5f);
-            // Raios menores que o padrão, proporcionais ao mapa com sprites menores
-            sentinela.raioDeteccao = 3f;
-            sentinela.raioDesistir = 4.5f;
+            Enemy modelo = EnemyFactory.Modelo(simbolo);
+            if (modelo == null) continue;
+
+            foreach (Vector2Int c in Posicoes(simbolo))
+            {
+                // Patrulhas (e sentinelas) vão de uma parede até a outra no corredor onde foram
+                // desenhadas, na direção definida no prefab. Os demais nascem na própria célula.
+                Vector2Int inicio = c;
+                float distancia = modelo.distanciaPatrulha;
+                if (modelo.comportamento == Enemy.Comportamento.Patrulha || modelo.comportamento == Enemy.Comportamento.Sentinela)
+                {
+                    Vector2Int direcao = Vector2Int.RoundToInt(modelo.direcaoPatrulha.normalized);
+                    inicio = labirinto.UltimaLivre(c, -direcao);
+                    distancia = Vector2Int.Distance(inicio, labirinto.UltimaLivre(c, direcao)) * celula;
+                }
+
+                // Criado já na posição inicial: o Enemy guarda essa posição no Start
+                Enemy inimigo = EnemyFactory.Criar(simbolo, labirinto.CentroDe(inicio));
+                if (inimigo == null) continue;
+                inimigo.distanciaPatrulha = distancia;
+                Configurar(inimigo);
+            }
         }
-    }
-
-    // A patrulha vai de uma parede até a outra no corredor onde foi desenhada
-    private Enemy CriarPatrulha(string nome, Vector2Int c, Vector2Int direcao, Enemy.Comportamento comportamento, float velocidade)
-    {
-        Vector2Int inicio = labirinto.UltimaLivre(c, -direcao);
-        Vector2Int fim = labirinto.UltimaLivre(c, direcao);
-        float distancia = Vector2Int.Distance(inicio, fim) * celula;
-
-        Enemy inimigo = EnemyFactory.Criar(nome, labirinto.CentroDe(inicio), comportamento, velocidade,
-                                           direcao, distancia);
-        Configurar(inimigo);
-        return inimigo;
     }
 
     // Todo inimigo da fase recebe o labirinto para andar pelos corredores

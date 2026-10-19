@@ -40,6 +40,22 @@ Os inimigos seguem os corredores do labirinto: o perseguidor e a sentinela encon
 
 O `GameManager`, o menu, a interface e o labirinto são criados automaticamente ao iniciar a cena. Os valores de tempo podem ser ajustados pelo Inspector.
 
+### Prefabs
+
+Itens, corações e inimigos são **prefabs** em `Assets/Resources/Prefabs/`, criados pelas fábricas ao montar a fase. Para mudar velocidade, raios de detecção, direção da patrulha ou cor de um tipo de inimigo, basta abrir o prefab dele e editar no Inspector:
+
+| Símbolo | Prefab |
+|---|---|
+| `I` | `Item` |
+| `C` | `Coracao` |
+| `E` | `InimigoParado` |
+| `H` | `InimigoPatrulhaHorizontal` |
+| `V` | `InimigoPatrulhaVertical` |
+| `S` | `InimigoSentinela` |
+| `F` | `InimigoPerseguidor` |
+
+Eles ficam em uma pasta `Resources` porque o `GameManager` e as fábricas são criados por código e não recebem referências pelo Inspector; assim o código encontra cada prefab pelo nome.
+
 ### Editando o labirinto
 
 As fases são desenhos em texto no arquivo `Assets/Scripts/Level/MapaFase.cs`. Cada caractere é uma célula de 0,5 x 0,5 unidade:
@@ -53,13 +69,13 @@ As fases são desenhos em texto no arquivo `Assets/Scripts/Level/MapaFase.cs`. C
 | `S` | sentinela | `F` | perseguidor |
 | `D` | porta de saída | | |
 
-Para mudar uma fase, basta redesenhar o texto (todas as linhas com o mesmo tamanho). Para criar uma fase nova, desenhe outro mapa e adicione-o à lista `MapaFase.Fases`: a porta da fase anterior passa a levar até ela. Patrulhas e sentinelas andam de uma parede até a outra no corredor onde foram desenhadas. Os itens já colocados na cena são movidos para as posições `I` da primeira fase; nas seguintes, são criadas cópias deles.
+Para mudar uma fase, basta redesenhar o texto (todas as linhas com o mesmo tamanho). Para criar uma fase nova, desenhe outro mapa e adicione-o à lista `MapaFase.Fases`: a porta da fase anterior passa a levar até ela. Patrulhas e sentinelas andam de uma parede até a outra no corredor onde foram desenhadas. Os itens já colocados na cena são movidos para as posições `I` da primeira fase; os que faltarem (e os das fases seguintes) são criados a partir do prefab `Item`.
 
 O labirinto só é montado ao dar Play, mas a aba **Scene** mostra uma pré-visualização dele no editor (paredes e marcadores com a letra de cada símbolo). Ela pode ser ligada e desligada no menu **Jogo Intro → Pré-visualizar labirinto**, e **Jogo Intro → Pré-visualizar próxima fase** alterna entre as fases.
 
 ## Estrutura do código
 
-Os scripts ficam em `Assets/Scripts/`, organizados **por funcionalidade**: cada pasta reúne tudo de uma parte do jogo. Os prefabs ficam em `Assets/Prefabs/` e a cena em `Assets/Scenes/`. (`Assets/Welcome/` é do template 2D da Unity e não faz parte do jogo.)
+Os scripts ficam em `Assets/Scripts/`, organizados **por funcionalidade**: cada pasta reúne tudo de uma parte do jogo. Os prefabs e o sprite do coração ficam em `Assets/Resources/` e a cena em `Assets/Scenes/`. (`Assets/Welcome/` é do template 2D da Unity e não faz parte do jogo.)
 
 ```
 Assets/Scripts/
@@ -82,7 +98,8 @@ Assets/Scripts/
 | `Core/` | `Vida.cs` | Pontos de vida (corações) de um objeto |
 | `Core/` | `IDanificavel.cs` | Interface para objetos que podem levar dano |
 | `Core/` | `ITransicaoFase.cs` | Interface da animação de troca de fase |
-| `Core/` | `SpriteFactory.cs` | Sprites gerados por código (quadrado, coração, triângulo, porta) |
+| `Core/` | `SpriteFactory.cs` | Sprites geométricos gerados por código (quadrado das paredes e porta) |
+| `Core/` | `Recursos.cs` | Carrega prefabs e sprites da pasta `Resources` pelo nome |
 | `Core/` | `OrdemDesenho.cs` | Ordem de desenho dos sprites (o que fica por cima) |
 | `Core/` | `ExtensoesComponente.cs` | `ObterOuAdicionar<T>()`: pega um componente ou o adiciona se faltar |
 | `Game/` | `GameManager.cs` | Regras e estados da partida: cronômetro, contagem regressiva, itens, vidas, fases, vitória/derrota e recorde |
@@ -91,11 +108,11 @@ Assets/Scripts/
 | `Player/` | `PlayerMovement.cs` | Movimento do jogador (teclado, física, empurrão) |
 | `Player/` | `DanoJogador.cs` | Reação a dano: perde coração, é empurrado e fica invencível piscando |
 | `Enemies/` | `Enemy.cs` | Configuração do inimigo e dano ao jogador |
-| `Enemies/` | `EnemyFactory.cs` | Criação de inimigos |
+| `Enemies/` | `EnemyFactory.cs` | Cria inimigos a partir dos prefabs (um por símbolo do mapa) |
 | `Enemies/Comportamentos/` | `IComportamentoInimigo.cs` e `Comportamento*.cs` | As estratégias de movimento: parado, patrulha, perseguição e sentinela |
 | `Items/` | `ItemColetavel.cs` | Item amarelo: avisa o `GameManager` ao ser coletado |
 | `Items/` | `CoracaoColetavel.cs` | Item que recupera 1 coração |
-| `Items/` | `ItemFactory.cs` | Criação dos corações e itens |
+| `Items/` | `ItemFactory.cs` | Cria corações e itens a partir dos prefabs |
 | `Level/` | `MapaFase.cs` | Desenho das fases em texto |
 | `Level/` | `ConstrutorFase.cs` | Monta a fase a partir do desenho (paredes, jogador, itens, corações, porta e inimigos) |
 | `Level/` | `Porta.cs` | Porta de saída: abre quando os itens acabam e leva à próxima fase |
@@ -155,7 +172,7 @@ stateDiagram-v2
 O `Enemy` não sabe *como* se mover: ele recebe uma estratégia (`IComportamentoInimigo`) conforme a opção do Inspector e a executa a cada frame. A `ComportamentoSentinela` reaproveita as estratégias de patrulha e perseguição. A `ComportamentoParado` é um Null Object: não faz nada, mas evita tratar "sem comportamento" como caso especial. Para criar um comportamento novo, basta escrever outra classe.
 
 ### Factory e Builder
-O `ConstrutorFase` (Builder) lê o desenho do `MapaFase` e decide **o que** vai em cada lugar; as fábricas sabem **como** criar cada objeto (inimigos, itens, telas e sprites). Por isso, mudar o labirinto não exige mexer em código, só no desenho.
+O `ConstrutorFase` (Builder) lê o desenho do `MapaFase` e decide **o que** vai em cada lugar; as fábricas sabem **como** criar cada objeto: inimigos e itens a partir dos prefabs, telas e sprites por código. Por isso, mudar o labirinto não exige mexer em código, só no desenho, e ajustar um inimigo é só editar o prefab dele.
 
 ### Interfaces
 - **`IDanificavel`**: o inimigo causa dano a qualquer objeto que implemente a interface (no jogador, o `DanoJogador`), sem conhecer o jogador.

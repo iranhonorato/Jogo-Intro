@@ -17,7 +17,7 @@ public class CoracaoColetavel : MonoBehaviour
         SpriteRenderer sr = gameObject.ObterOuAdicionar<SpriteRenderer>();
         if (sr.sprite == null)
         {
-            sr.sprite = SpriteFactory.Coracao();
+            sr.sprite = Recursos.Sprite("Coracao");
             sr.color = Cor;
         }
         sr.sortingOrder = OrdemDesenho.Itens; // na frente do cenário, atrás do jogador

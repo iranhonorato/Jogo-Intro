@@ -199,7 +199,7 @@ public class GameHUD : MonoBehaviour
         for (int i = 0; i < quantidade; i++)
         {
             float x = -30f - (quantidade - 1 - i) * EspacoCoracao; // o último coração fica mais à direita
-            coracoes[i] = UIFactory.CriarImagem(raiz, "Coracao " + (i + 1), SpriteFactory.Coracao(),
+            coracoes[i] = UIFactory.CriarImagem(raiz, "Coracao " + (i + 1), Recursos.Sprite("Coracao"),
                                                 cantoSuperiorDireito, new Vector2(x, -25f), tamanho);
         }
     }
