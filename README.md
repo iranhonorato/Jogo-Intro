@@ -1,6 +1,9 @@
 # Jogo Intro
 
-Jogo 2D feito em **Unity 6** em que o jogador controla uma bola e precisa atravessar **dois labirintos**: em cada um, **coletar todos os itens** para abrir a **porta de saída** antes que o tempo acabe, desviando de inimigos.
+Jogo 2D feito em **Unity 6** para o **Projeto Introdução ao Unity (Insper, 2026)**. Nesse jogo, o jogador controla uma raposa e precisa atravessar **dois labirintos**: em cada um, **coletar todos os itens** para abrir a **porta de saída** antes que o tempo acabe, desviando de inimigos para preservar suas vidinhas.
+
+## Autor:
+Antonio Iranilson Honorato dos Santos Junior
 
 ## Como jogar
 
